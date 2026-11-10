@@ -61,6 +61,72 @@
   .day { margin: 22px 0 6px; font-weight: 700; color: rgba(255,255,255,.85); }
   .time { width: 44px; color: rgba(255,255,255,.5); font-size: 13px; font-variant-numeric: tabular-nums; }
   .empty { text-align: center; color: rgba(255,255,255,.6); padding: 70px 20px; font-size: 16px; }
+
+  /* ---------- Hedefler ---------- */
+  .goalTop { display: grid; grid-template-columns: 240px 1fr; gap: 24px; align-items: center; }
+  .ring { position: relative; width: 220px; height: 220px; }
+  .ring svg { transform: rotate(-90deg); }
+  .ring .in { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+  .ring .in b { font: 800 40px/1 "Segoe UI Variable Display", "Segoe UI", sans-serif; }
+  .ring .in span { color: rgba(255,255,255,.6); font-size: 13px; margin-top: 6px; }
+  .streaks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .flame { font-size: 26px; }
+  .week { display: flex; gap: 10px; align-items: flex-end; height: 150px; position: relative; padding-top: 10px; }
+  .week .d { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
+  .week .b { width: 100%; max-width: 46px; border-radius: 8px 8px 4px 4px; background: rgba(255,255,255,.12); min-height: 4px; }
+  .week .b.ok { background: var(--accent); }
+  .week .d span { font-size: 12px; color: rgba(255,255,255,.55); }
+  .week .line { position: absolute; left: 0; right: 0; border-top: 2px dashed rgba(255,255,255,.3); }
+  .goalpick { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  .badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+  .badge { border-radius: 18px; padding: 16px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07); text-align: center; }
+  .badge .e { font-size: 38px; filter: grayscale(1) opacity(.35); }
+  .badge.got { background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 28%, transparent), rgba(255,255,255,.03)); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+  .badge.got .e { filter: none; }
+  .badge b { display: block; margin-top: 6px; }
+  .badge span { display: block; color: rgba(255,255,255,.55); font-size: 12px; margin-top: 3px; }
+  .badge .pb { height: 5px; border-radius: 5px; background: rgba(255,255,255,.08); margin-top: 10px; overflow: hidden; }
+  .badge .pb i { display: block; height: 100%; background: rgba(255,255,255,.4); border-radius: 5px; }
+  .wrapBtn { background: linear-gradient(90deg, var(--accent), #8b5cf6); color: #fff; }
+  .wrapBtn:hover { filter: brightness(1.1); background: linear-gradient(90deg, var(--accent), #8b5cf6); }
+
+  /* ---------- Yıllık özet (Wrapped) ---------- */
+  #wrap { position: fixed; inset: 0; z-index: 50; background: #07070b; display: none; overflow: hidden; }
+  #wrap.on { display: block; }
+  #wrap .bgA, #wrap .bgB { position: absolute; width: 90vmax; height: 90vmax; border-radius: 50%; filter: blur(90px); opacity: .65; transition: background 1s ease; }
+  #wrap .bgA { left: -30vmax; top: -40vmax; animation: wdrift 16s ease-in-out infinite alternate; }
+  #wrap .bgB { right: -35vmax; bottom: -45vmax; animation: wdrift 20s ease-in-out infinite alternate-reverse; }
+  @keyframes wdrift { to { transform: translate(8vmax, 6vmax) scale(1.15); } }
+  .wsegs { position: absolute; top: 16px; left: 20px; right: 70px; display: flex; gap: 6px; z-index: 3; }
+  .wsegs div { flex: 1; height: 4px; border-radius: 4px; background: rgba(255,255,255,.25); overflow: hidden; }
+  .wsegs i { display: block; height: 100%; width: 0; background: #fff; }
+  .wsegs .done i { width: 100%; }
+  .wsegs .cur i { animation: wfill var(--dur, 7s) linear forwards; }
+  #wrap.paused .wsegs .cur i { animation-play-state: paused; }
+  @keyframes wfill { to { width: 100%; } }
+  .wx { position: absolute; top: 8px; right: 16px; z-index: 4; width: 40px; height: 40px; border-radius: 50%; border: 0; background: rgba(255,255,255,.12); color: #fff; font-size: 18px; cursor: pointer; }
+  .wnav { position: absolute; top: 0; bottom: 0; width: 30%; z-index: 2; cursor: pointer; }
+  .wnav.l { left: 0; } .wnav.r { right: 0; }
+  .wslide { position: absolute; inset: 0; z-index: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 60px 8vw; }
+  .wslide > * { opacity: 0; transform: translateY(26px); animation: wup .7s cubic-bezier(.2,.8,.2,1) forwards; }
+  .wslide > *:nth-child(2) { animation-delay: .25s; } .wslide > *:nth-child(3) { animation-delay: .5s; }
+  .wslide > *:nth-child(4) { animation-delay: .75s; } .wslide > *:nth-child(5) { animation-delay: 1s; }
+  @keyframes wup { to { opacity: 1; transform: none; } }
+  .wk { font-size: 14px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.75); }
+  .wh { font: 900 clamp(34px, 6vw, 76px)/1.02 "Segoe UI Variable Display", "Segoe UI", sans-serif; letter-spacing: -0.03em; margin: 14px 0; max-width: 1000px; }
+  .whuge { font: 900 clamp(70px, 15vw, 190px)/0.95 "Segoe UI Variable Display", "Segoe UI", sans-serif; letter-spacing: -0.05em; }
+  .wp { font-size: clamp(16px, 1.8vw, 22px); color: rgba(255,255,255,.8); max-width: 640px; }
+  .wcover { width: min(34vh, 300px); height: min(34vh, 300px); border-radius: 20px; object-fit: cover; box-shadow: 0 30px 80px rgba(0,0,0,.6); margin-bottom: 10px; }
+  .wcover.round { border-radius: 50%; }
+  .wlist { text-align: left; width: min(560px, 90vw); margin-top: 10px; }
+  .wlist .it { display: flex; align-items: center; gap: 16px; padding: 8px 0; opacity: 0; animation: wup .6s cubic-bezier(.2,.8,.2,1) forwards; }
+  .wlist .n { font: 900 34px "Segoe UI Variable Display", sans-serif; width: 44px; color: rgba(255,255,255,.5); }
+  .wlist img, .wlist .ph { width: 58px; height: 58px; border-radius: 8px; }
+  .wlist b { display: block; font-size: 18px; } .wlist span { color: rgba(255,255,255,.65); }
+  .wfinal { display: flex; gap: 14px; margin-top: 18px; }
+  .wfinal .pill { padding: 12px 20px; font-size: 15px; }
+  .wfinal, .wcard { position: relative; z-index: 3; }
+  .wcard { height: min(64vh, 700px); width: auto; max-width: 80vw; border-radius: 18px; box-shadow: 0 30px 80px rgba(0,0,0,.6); }
   .hidden { display: none; }
   ::-webkit-scrollbar { width: 10px; } ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 10px; }
 </style>
@@ -72,6 +138,8 @@
     <div class="bar">
       <button class="pill on" data-tab="summary">Özet</button>
       <button class="pill" data-tab="history">Geçmiş</button>
+      <button class="pill" data-tab="goals">Hedefler</button>
+      <button class="pill wrapBtn" id="openWrap">✨ Yıllık özetin</button>
       <span class="spacer"></span>
       <button class="pill" data-p="7">7 gün</button>
       <button class="pill on" data-p="30">30 gün</button>
@@ -81,11 +149,19 @@
   </div>
   <main>
     <section id="summary"></section>
+    <section id="goals" class="hidden"></section>
     <section id="history" class="hidden">
       <input class="search" id="q" placeholder="Geçmişte ara: şarkı veya sanatçı">
       <div id="hlist"></div>
     </section>
   </main>
+  <div id="wrap">
+    <div class="bgA"></div><div class="bgB"></div>
+    <div class="wsegs" id="wsegs"></div>
+    <button class="wx" id="wx" title="Kapat (Esc)">✕</button>
+    <div class="wnav l" id="wl"></div><div class="wnav r" id="wr"></div>
+    <div id="wstage"></div>
+  </div>
 <script>
   const $ = (id) => document.getElementById(id);
   const h = (tag, props = {}, kids = []) => {
@@ -187,10 +263,218 @@
     }
   }
   function render() {
-    $('summary').classList.toggle('hidden', tab !== 'summary');
-    $('history').classList.toggle('hidden', tab !== 'history');
-    tab === 'summary' ? renderSummary() : renderHistory();
+    for (const t of ['summary', 'history', 'goals']) $(t).classList.toggle('hidden', tab !== t);
+    tab === 'summary' ? renderSummary() : tab === 'history' ? renderHistory() : renderGoals();
   }
+  // tarih dışı sekmelerde dönem düğmeleri anlamsız
+  const periodBtns = () => document.querySelectorAll('[data-p]');
+
+  /* ================= Hedefler ve rozetler ================= */
+  let goalMin = 30;
+  const dayKey = (t) => { const d = new Date(t); return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate(); };
+  function perDay() { const m = new Map(); for (const x of all) { const k = dayKey(x.t); m.set(k, (m.get(k) || 0) + (x.sec || 0)); } return m; }
+  function streaks(per, goalSec) {
+    const d = new Date(); d.setHours(12, 0, 0, 0);
+    if ((per.get(dayKey(d)) || 0) < goalSec) d.setDate(d.getDate() - 1);
+    let cur = 0; while ((per.get(dayKey(d)) || 0) >= goalSec) { cur++; d.setDate(d.getDate() - 1); }
+    const days = [...per.entries()].filter(([, v]) => v >= goalSec).map(([k]) => new Date(Math.floor(k / 10000), Math.floor(k / 100) % 100 - 1, k % 100, 12).getTime()).sort((a, b) => a - b);
+    let best = 0, run = 0, prev = 0;
+    for (const t of days) { run = prev && Math.round((t - prev) / 86400000) === 1 ? run + 1 : 1; best = Math.max(best, run); prev = t; }
+    return { cur, best: Math.max(best, cur), daysMet: days.length };
+  }
+  function badgeList(per, st) {
+    const total = all.reduce((s, x) => s + (x.sec || 0), 0);
+    const artists = new Set(all.map((x) => firstArtist(x.artist)));
+    const songCount = new Map(); for (const x of all) { const k = x.id || x.title; songCount.set(k, (songCount.get(k) || 0) + 1); }
+    const maxSong = Math.max(0, ...songCount.values());
+    const night = all.filter((x) => { const h = new Date(x.t).getHours(); return h < 5; }).length;
+    const early = all.filter((x) => { const h = new Date(x.t).getHours(); return h >= 5 && h < 8; }).length;
+    const maxDay = Math.max(0, ...per.values());
+    const B = (e, name, desc, val, need) => ({ e, name, desc, val: Math.min(val, need), need, got: val >= need });
+    return [
+      B('🎵', 'İlk nota', 'İlk şarkını dinle', all.length, 1),
+      B('💯', 'Yüzlük', '100 şarkı dinle', all.length, 100),
+      B('🏆', 'Bin şarkı', '1000 şarkı dinle', all.length, 1000),
+      B('⏱️', '10 saat', 'Toplam 10 saat dinle', Math.floor(total / 3600), 10),
+      B('🚀', '100 saat', 'Toplam 100 saat dinle', Math.floor(total / 3600), 100),
+      B('🔥', 'Isınma turu', '3 gün üst üste hedefi tuttur', st.best, 3),
+      B('📅', 'Haftalık seri', '7 gün üst üste hedefi tuttur', st.best, 7),
+      B('👑', 'Ay boyu', '30 gün üst üste hedefi tuttur', st.best, 30),
+      B('🌙', 'Gece kuşu', 'Gece 00–05 arası 25 şarkı', night, 25),
+      B('🌅', 'Erken kalkan', 'Sabah 05–08 arası 25 şarkı', early, 25),
+      B('🧭', 'Kaşif', '50 farklı sanatçı dinle', artists.size, 50),
+      B('💘', 'Sadık hayran', 'Bir şarkıyı 25 kez dinle', maxSong, 25),
+      B('🏃', 'Maraton', 'Bir günde 3 saat dinle', Math.floor(maxDay / 60), 180)
+    ];
+  }
+  function renderGoals() {
+    const box = $('goals'); box.replaceChildren();
+    const per = perDay(), goalSec = goalMin * 60;
+    const todaySec = per.get(dayKey(Date.now())) || 0;
+    const st = streaks(per, goalSec);
+    const pct = Math.min(1, todaySec / goalSec);
+    const R = 92, C = 2 * Math.PI * R, NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg'); svg.setAttribute('width', 220); svg.setAttribute('height', 220);
+    const circ = (stroke, dash) => { const c = document.createElementNS(NS, 'circle'); c.setAttribute('cx', 110); c.setAttribute('cy', 110); c.setAttribute('r', R); c.setAttribute('fill', 'none'); c.setAttribute('stroke-width', 18); c.setAttribute('stroke', stroke); c.setAttribute('stroke-linecap', 'round'); if (dash != null) { c.setAttribute('stroke-dasharray', C); c.setAttribute('stroke-dashoffset', C); c.style.transition = 'stroke-dashoffset 1.2s cubic-bezier(.2,.8,.2,1)'; requestAnimationFrame(() => requestAnimationFrame(() => c.setAttribute('stroke-dashoffset', C * (1 - dash)))); } return c; };
+    svg.append(circ('rgba(255,255,255,.08)'), circ(getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#ff4d6d', pct));
+    const left = Math.max(0, Math.ceil((goalSec - todaySec) / 60));
+    box.append(h('div', { class: 'goalTop' }, [
+      h('div', { class: 'ring' }, [svg, h('div', { class: 'in' }, [h('b', { text: Math.round(todaySec / 60) + ' dk' }), h('span', { text: `bugün · hedef ${goalMin} dk` })])]),
+      h('div', {}, [
+        h('div', { class: 'kicker', text: pct >= 1 ? 'Bugünkü hedef tamam 🎉' : 'Bugünkü hedef' }),
+        h('div', { class: 't', style: 'font:800 28px/1.15 "Segoe UI Variable Display","Segoe UI",sans-serif;margin:6px 0 14px', text: pct >= 1 ? 'Harika gidiyorsun, seri devam ediyor!' : `Hedefe ${left} dakika kaldı` }),
+        h('div', { class: 'streaks' }, [
+          h('div', { class: 'card' }, [h('div', { class: 'big' }, [h('span', { class: 'flame', text: '🔥 ' }), document.createTextNode(String(st.cur))]), h('div', { class: 'label', text: 'günlük seri' })]),
+          h('div', { class: 'card' }, [h('div', { class: 'big', text: String(st.best) }), h('div', { class: 'label', text: 'en uzun seri' })]),
+          h('div', { class: 'card' }, [h('div', { class: 'big', text: String(st.daysMet) }), h('div', { class: 'label', text: 'hedefi tutturduğun gün' })])
+        ]),
+        h('div', { class: 'goalpick' }, [15, 30, 60, 90, 120, 180].map((m) => h('button', { class: 'pill' + (m === goalMin ? ' on' : ''), text: m < 60 ? m + ' dk' : (m / 60).toString().replace('.', ',') + ' saat', onclick: () => { goalMin = m; window.ytmd.setGoal && window.ytmd.setGoal(m); renderGoals(); } })))
+      ])
+    ]));
+    // son 7 gün
+    box.append(h('h2', { text: 'Son 7 gün' }));
+    const days = []; for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); days.push(d); }
+    const vals = days.map((d) => per.get(dayKey(d)) || 0), max = Math.max(goalSec * 1.25, ...vals);
+    const wk = h('div', { class: 'week' }, days.map((d, i) => h('div', { class: 'd', title: dur(vals[i]) }, [
+      h('div', { class: 'b' + (vals[i] >= goalSec ? ' ok' : ''), style: `height:${Math.max(3, vals[i] / max * 120)}px` }),
+      h('span', { text: i === 6 ? 'Bugün' : d.toLocaleDateString('tr-TR', { weekday: 'short' }) })
+    ])));
+    wk.append(h('div', { class: 'line', style: `bottom:${goalSec / max * 120 + 24}px`, title: 'Hedef' }));
+    box.append(wk);
+    // rozetler
+    const bl = badgeList(per, st);
+    box.append(h('h2', { text: `Rozetler · ${bl.filter((b) => b.got).length}/${bl.length}` }));
+    box.append(h('div', { class: 'badges' }, bl.map((b) => h('div', { class: 'badge' + (b.got ? ' got' : ''), title: b.desc }, [
+      h('div', { class: 'e', text: b.e }), h('b', { text: b.name }), h('span', { text: b.got ? b.desc + ' ✓' : `${b.desc} · ${b.val}/${b.need}` }),
+      b.got ? null : h('div', { class: 'pb' }, [h('i', { style: `width:${b.val / b.need * 100}%` })])
+    ]))));
+  }
+
+  /* ================= Yıllık özet (Wrapped) ================= */
+  const W = { slides: [], i: 0, timer: 0, data: null };
+  const PAL = [['#ff4d6d', '#7c3aed'], ['#f59e0b', '#ef4444'], ['#10b981', '#2563eb'], ['#ec4899', '#8b5cf6'], ['#06b6d4', '#4f46e5'], ['#f97316', '#db2777'], ['#22c55e', '#0ea5e9'], ['#a855f7', '#f43f5e']];
+  function wrapData() {
+    const year = new Date().getFullYear();
+    let list = all.filter((x) => new Date(x.t).getFullYear() === year), label = String(year);
+    if (list.length < 20) { list = all.filter((x) => x.t >= Date.now() - 365 * 86400000); label = 'Son 1 yıl'; }
+    if (!list.length) return null;
+    const sec = list.reduce((s, x) => s + (x.sec || 0), 0);
+    const songs = new Map(), artists = new Map(), hours = new Array(24).fill(0), wd = new Array(7).fill(0), days = new Map();
+    for (const x of list) {
+      const k = x.id || x.title + '|' + x.artist;
+      const s = songs.get(k) || { ...x, plays: 0, secs: 0 }; s.plays++; s.secs += x.sec || 0; songs.set(k, s);
+      const an = firstArtist(x.artist); const a = artists.get(an) || { name: an, secs: 0, plays: 0, art: x.art }; a.secs += x.sec || 0; a.plays++; artists.set(an, a);
+      const d = new Date(x.t); hours[d.getHours()] += x.sec || 0; wd[d.getDay()] += x.sec || 0;
+      const dk = dayKey(x.t); days.set(dk, (days.get(dk) || 0) + (x.sec || 0));
+    }
+    const topSongs = [...songs.values()].sort((a, b) => b.plays - a.plays || b.secs - a.secs).slice(0, 5);
+    const topArtists = [...artists.values()].sort((a, b) => b.secs - a.secs).slice(0, 5);
+    const peak = hours.indexOf(Math.max(...hours));
+    const persona = peak < 5 ? ['🌙', 'Gece kuşu', 'Herkes uyurken senin kulaklığın açıktı.'] : peak < 12 ? ['🌅', 'Sabah insanı', 'Güne müzikle başlamadan olmuyor.'] : peak < 18 ? ['☀️', 'Gün ışığı dinleyicisi', 'Öğlen ve öğleden sonra senin saatin.'] : ['🌆', 'Akşam keyfi', 'Gün bitince asıl müzik başlıyor.'];
+    const wdNames = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+    const bestDay = [...days.entries()].sort((a, b) => b[1] - a[1])[0];
+    const bd = bestDay ? new Date(Math.floor(bestDay[0] / 10000), Math.floor(bestDay[0] / 100) % 100 - 1, bestDay[0] % 100) : null;
+    const topArtSong = topArtists[0] ? [...songs.values()].filter((s) => firstArtist(s.artist) === topArtists[0].name).sort((a, b) => b.plays - a.plays)[0] : null;
+    return { label, sec, plays: list.length, songs: songs.size, artists: artists.size, topSongs, topArtists, persona, peak, favDay: wdNames[wd.indexOf(Math.max(...wd))], bd, bdSec: bestDay ? bestDay[1] : 0, topArtSong, st: streaks(perDay(), goalMin * 60) };
+  }
+  const fmtN = (n) => n.toLocaleString('tr-TR');
+  function wslides(D) {
+    const mins = Math.round(D.sec / 60);
+    const S = [];
+    S.push(() => [h('div', { class: 'wk', text: 'Yıllık özetin' }), h('div', { class: 'whuge', text: D.label }), h('div', { class: 'wp', text: 'Müzikle geçen bir yıl. Hadi bakalım neler dinlemişsin 🎧' })]);
+    S.push(() => [h('div', { class: 'wk', text: 'Toplam dinleme' }), h('div', { class: 'whuge', text: fmtN(mins) }), h('div', { class: 'wh', text: 'dakika müzik' }),
+      h('div', { class: 'wp', text: `${fmtN(D.plays)} kez çal tuşuna bastın. Bu, aralıksız ${mins >= 1440 ? (mins / 1440).toFixed(1).replace('.', ',') + ' gün' : (mins / 60).toFixed(1).replace('.', ',') + ' saat'} müzik demek.` })]);
+    if (D.topArtists[0]) S.push(() => [h('div', { class: 'wk', text: 'En çok dinlediğin sanatçı' }), wimg(D.topArtSong && D.topArtSong.art, true), h('div', { class: 'wh', text: D.topArtists[0].name }),
+      h('div', { class: 'wp', text: `${fmtN(Math.round(D.topArtists[0].secs / 60))} dakika birlikteydiniz${D.topArtSong ? '. En sevdiğin: “' + D.topArtSong.title + '”' : ''}.` })]);
+    if (D.topSongs[0]) S.push(() => [h('div', { class: 'wk', text: 'Yılın şarkısı' }), wimg(D.topSongs[0].art), h('div', { class: 'wh', text: D.topSongs[0].title }), h('div', { class: 'wp', text: `${D.topSongs[0].artist} · ${D.topSongs[0].plays} kez dinledin` })]);
+    S.push(() => [h('div', { class: 'wk', text: 'En çok dinlediğin şarkılar' }), h('div', { class: 'wlist' }, D.topSongs.map((s, i) => {
+      const it = h('div', { class: 'it', style: `animation-delay:${0.3 + i * 0.18}s` }, [h('div', { class: 'n', text: String(i + 1) }), img(s.art, 120), h('div', {}, [h('b', { text: s.title }), h('span', { text: `${s.artist} · ${s.plays} kez` })])]);
+      return it;
+    }))]);
+    S.push(() => [h('div', { class: 'wk', text: 'Dinleme kişiliğin' }), h('div', { class: 'whuge', text: D.persona[0] }), h('div', { class: 'wh', text: D.persona[1] }),
+      h('div', { class: 'wp', text: `${D.persona[2]} En çok ${String(D.peak).padStart(2, '0')}:00 civarı ve ${D.favDay} günleri dinliyorsun.` })]);
+    S.push(() => [h('div', { class: 'wk', text: 'Keşiflerin' }), h('div', { class: 'wh', text: `${fmtN(D.songs)} farklı şarkı, ${fmtN(D.artists)} farklı sanatçı` }),
+      h('div', { class: 'wp', text: (D.bd ? `En dolu günün ${D.bd.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}: ${dur(D.bdSec)} dinledin. ` : '') + (D.st.best > 1 ? `En uzun hedef serin ${D.st.best} gün 🔥` : '') })]);
+    S.push(() => { const pv = h('img', { class: 'wcard', alt: '' }); W.cardPromise = summaryCard(D).then((u) => { pv.src = u; W.card = u; return u; });
+      return [h('div', { class: 'wk', text: 'Senin yılın, tek karede' }), pv, h('div', { class: 'wfinal' }, [
+        h('button', { class: 'pill on', text: 'Görseli kaydet', onclick: async (e) => { e.stopPropagation(); const u = await W.cardPromise; window.ytmd.saveImage(u, 'Yillik ozet ' + D.label); } }),
+        h('button', { class: 'pill', text: 'Kopyala', onclick: async (e) => { e.stopPropagation(); const u = await W.cardPromise; const ok = await window.ytmd.copyImage(u); e.target.textContent = ok ? 'Kopyalandı ✓' : 'Kopyalanamadı'; } }),
+        h('button', { class: 'pill', text: 'Baştan izle', onclick: (e) => { e.stopPropagation(); wgo(0); } })
+      ])]; });
+    return S;
+  }
+  function wimg(src, round) {
+    if (!/^https:\/\//.test(src || '')) return h('div', { class: 'wcover ph' + (round ? ' round' : '') });
+    const i = h('img', { class: 'wcover' + (round ? ' round' : ''), src: src.replace(/=w\d+-h\d+/, '=w600-h600'), alt: '' });
+    i.onerror = () => i.replaceWith(h('div', { class: 'wcover ph' + (round ? ' round' : '') }));
+    return i;
+  }
+  const loadImage = (src) => new Promise((res) => { if (!src) return res(null); const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
+  async function coverImg(url, size) {
+    if (!/^https:\/\//.test(url || '') || !window.ytmd.coverData) return null;
+    const d = await window.ytmd.coverData(url.replace(/=w\d+-h\d+/, `=w${size}-h${size}`)).catch(() => null);
+    return loadImage(d);
+  }
+  async function summaryCard(D) {
+    const c = document.createElement('canvas'); c.width = 1080; c.height = 1920; const x = c.getContext('2d');
+    const [c1, c2] = PAL[0];
+    const g = x.createLinearGradient(0, 0, 1080, 1920); g.addColorStop(0, c1); g.addColorStop(1, c2); x.fillStyle = g; x.fillRect(0, 0, 1080, 1920);
+    x.fillStyle = 'rgba(0,0,0,.28)'; x.fillRect(0, 0, 1080, 1920);
+    const F = '"Segoe UI Variable Display", "Segoe UI", sans-serif';
+    const ell = (t, w) => { t = String(t); if (x.measureText(t).width <= w) return t; while (t && x.measureText(t + '…').width > w) t = t.slice(0, -1); return t + '…'; };
+    x.fillStyle = '#fff'; x.textBaseline = 'top';
+    x.font = '800 40px ' + F; x.fillText('YILLIK ÖZETİN', 90, 110);
+    x.font = '900 170px ' + F; x.fillText(D.label, 84, 160);
+    const cov = await coverImg(D.topSongs[0] && D.topSongs[0].art, 600);
+    if (cov) { x.save(); x.beginPath(); x.roundRect(90, 400, 520, 520, 30); x.clip(); const m = Math.min(cov.width, cov.height); x.drawImage(cov, (cov.width - m) / 2, (cov.height - m) / 2, m, m, 90, 400, 520, 520); x.restore(); }
+    else { x.fillStyle = 'rgba(255,255,255,.14)'; x.beginPath(); x.roundRect(90, 400, 520, 520, 30); x.fill(); x.fillStyle = 'rgba(255,255,255,.9)'; x.font = '900 260px ' + F; x.textAlign = 'center'; x.fillText('♪', 350, 510); x.textAlign = 'left'; }
+    if (D.topSongs[0]) { x.fillStyle = 'rgba(255,255,255,.75)'; x.font = '700 30px ' + F; x.fillText('YILIN ŞARKISI', 650, 420); x.fillStyle = '#fff'; let fs = 56; x.font = `800 ${fs}px ` + F;
+      const words = String(D.topSongs[0].title).split(' '); const lines = []; let ln = '';
+      for (const w of words) { const t = ln ? ln + ' ' + w : w; if (x.measureText(t).width > 360 && ln) { lines.push(ln); ln = w; } else ln = t; } if (ln) lines.push(ln);
+      lines.slice(0, 4).forEach((l, i) => x.fillText(ell(l, 360), 650, 466 + i * 64));
+      x.fillStyle = 'rgba(255,255,255,.75)'; x.font = '500 34px ' + F; x.fillText(ell(D.topSongs[0].artist, 360), 650, 466 + Math.min(4, lines.length) * 64 + 14); }
+    let y = 980;
+    x.font = '700 34px ' + F; x.fillStyle = 'rgba(255,255,255,.75)'; x.fillText('EN ÇOK DİNLENEN ŞARKILAR', 90, y);
+    x.font = '700 34px ' + F; x.fillStyle = 'rgba(255,255,255,.75)'; x.fillText('SANATÇILAR', 640, y);
+    y += 60;
+    for (let i = 0; i < 5; i++) {
+      x.fillStyle = '#fff'; x.font = '700 40px ' + F;
+      if (D.topSongs[i]) x.fillText(ell(`${i + 1}  ${D.topSongs[i].title}`, 520), 90, y + i * 66);
+      if (D.topArtists[i]) x.fillText(ell(`${i + 1}  ${D.topArtists[i].name}`, 360), 640, y + i * 66);
+    }
+    y += 5 * 66 + 60;
+    const stat = (lbl, val, sx, maxW) => { x.fillStyle = 'rgba(255,255,255,.75)'; x.font = '700 32px ' + F; x.fillText(lbl, sx, y); x.fillStyle = '#fff'; let fs = 76; x.font = `900 ${fs}px ` + F; while (x.measureText(val).width > maxW && fs > 36) { fs -= 4; x.font = `900 ${fs}px ` + F; } x.fillText(val, sx, y + 44 + (76 - fs) / 2); };
+    stat('DAKİKA', fmtN(Math.round(D.sec / 60)), 90, 380);
+    stat('KİŞİLİK', D.persona[1], 520, 480);
+    x.fillStyle = 'rgba(255,255,255,.85)'; x.font = '600 34px ' + F; x.fillText('YouTube Music Desktop', 90, 1800);
+    return c.toDataURL('image/png');
+  }
+  function wgo(i) {
+    W.i = Math.max(0, Math.min(W.slides.length - 1, i));
+    clearTimeout(W.timer);
+    const segs = $('wsegs'); [...segs.children].forEach((s, k) => { s.className = k < W.i ? 'done' : k === W.i ? 'cur' : ''; const b = s.firstChild; b.style.animation = 'none'; void b.offsetWidth; b.style.animation = ''; });
+    const [a, b] = PAL[W.i % PAL.length];
+    document.querySelector('#wrap .bgA').style.background = a; document.querySelector('#wrap .bgB').style.background = b;
+    const last = W.i === W.slides.length - 1;
+    $('wstage').replaceChildren(h('div', { class: 'wslide' }, W.slides[W.i]()));
+    if (!last) W.timer = setTimeout(() => wgo(W.i + 1), 7000);
+  }
+  function openWrap() {
+    const D = wrapData();
+    if (!D) { alert('Yıllık özet için önce biraz müzik dinlemelisin 🎧'); return; }
+    W.slides = wslides(D);
+    $('wsegs').replaceChildren(...W.slides.map(() => h('div', {}, [h('i')])));
+    $('wrap').classList.add('on'); wgo(0);
+  }
+  function closeWrap() { clearTimeout(W.timer); $('wrap').classList.remove('on'); $('wstage').replaceChildren(); }
+  $('openWrap').onclick = openWrap;
+  $('wx').onclick = closeWrap;
+  $('wl').onclick = () => wgo(W.i - 1);
+  $('wr').onclick = () => wgo(W.i + 1);
+  document.addEventListener('keydown', (e) => {
+    if (!$('wrap').classList.contains('on')) return;
+    if (e.key === 'Escape') closeWrap(); else if (e.key === 'ArrowRight' || e.key === ' ') wgo(W.i + 1); else if (e.key === 'ArrowLeft') wgo(W.i - 1);
+  });
   document.querySelectorAll('[data-tab]').forEach((b) => b.onclick = () => {
     tab = b.dataset.tab; document.querySelectorAll('[data-tab]').forEach((x) => x.classList.toggle('on', x === b)); render();
   });
@@ -199,8 +483,9 @@
   });
   $('q').addEventListener('input', () => renderHistory());
 
-  window.ytmd.getHistory().then(({ history, accent }) => {
+  window.ytmd.getHistory().then(({ history, accent, goal }) => {
     all = Array.isArray(history) ? history : [];
+    if (goal) goalMin = goal;
     if (accent) document.documentElement.style.setProperty('--accent', accent);
     const first = all[0] ? new Date(all[0].t).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
     $('sub').textContent = all.length ? `${first} tarihinden beri ${all.length} dinleme kaydedildi` : 'Henüz kayıt yok — dinledikçe burası dolacak';
