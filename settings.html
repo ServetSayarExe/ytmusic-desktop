@@ -106,6 +106,8 @@
           <label class="sw"><input type="checkbox" data-key="normalize"><i></i></label></div>
         <div class="item"><div class="txt"><b>Yumuşak geçiş: <span id="cfLbl" style="color:var(--accent)">Kapalı</span></b><span>Şarkı biterken ses yavaşça kısılır, yenisi yavaşça açılır</span></div>
           <input type="range" id="cf" min="0" max="12" step="1" style="width:180px;accent-color:var(--accent)"></div>
+        <div class="item"><div class="txt"><b>Ses yükseltme: <span id="boostLbl" style="color:var(--accent)">%100</span></b><span>Sessiz kayıtlarda sesi %200'e kadar açar, cızırtıyı önler</span></div>
+          <input type="range" id="boost" min="100" max="200" step="10" style="width:180px;accent-color:var(--accent)"></div>
         <div class="item"><div class="txt"><b>Oynatma hızı</b><span>Sesin tonu değişmez, sadece hız</span></div>
           <select id="speed"><option value="0.75">0,75x</option><option value="0.9">0,9x</option><option value="1">Normal</option><option value="1.1">1,1x</option><option value="1.25">1,25x</option><option value="1.5">1,5x</option></select></div>
         <div class="item"><div class="txt"><b>Ses çıkışı</b><span>Müziğin hangi hoparlör ya da kulaklıktan çalacağı</span></div>
@@ -256,12 +258,15 @@
     refreshSleep(); refreshCount();
     $('cf').value = s.crossfade || 0; $('cf').oninput();
     $('speed').value = String(s.speed || 1);
+    $('boost').value = s.boost || 100; $('boost').oninput();
     $('goal').value = String(s.dailyGoal || 30);
     loadDevices(s.outputDevice || '');
   });
   $('cf').oninput = () => { $('cfLbl').textContent = +$('cf').value ? $('cf').value + ' saniye' : 'Kapalı'; };
   $('cf').onchange = () => set('crossfade', +$('cf').value);
   $('speed').onchange = () => set('speed', +$('speed').value);
+  $('boost').oninput = () => { $('boostLbl').textContent = '%' + $('boost').value; };
+  $('boost').onchange = () => set('boost', +$('boost').value);
   $('goal').onchange = () => set('dailyGoal', +$('goal').value);
   $('dev').onchange = () => set('outputDevice', $('dev').value);
   async function loadDevices(cur) {
