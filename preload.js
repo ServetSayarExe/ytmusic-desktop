@@ -17,6 +17,11 @@ contextBridge.exposeInMainWorld('ytmd', {
   openSettings: () => ipcRenderer.send('ytmd-open-settings'),
   installUpdate: () => ipcRenderer.send('ytmd-update-install'),
   sleepDone: () => ipcRenderer.send('ytmd-sleep-done'),
+  pageSet: (key, value) => ipcRenderer.send('ytmd-page-set', key, value),
+  recent: () => ipcRenderer.invoke('ytmd-recent'),
+  coverData: (url) => ipcRenderer.invoke('ytmd-cover-data', url),
+  copyImage: (dataUrl) => ipcRenderer.invoke('ytmd-copy-image', dataUrl),
+  saveImage: (dataUrl, name) => ipcRenderer.invoke('ytmd-save-image', dataUrl, name),
 
   // mini oynatıcı
   onNowPlaying: (cb) => ipcRenderer.on('ytmd-np-push', (_e, d) => cb(d)),
@@ -32,11 +37,13 @@ contextBridge.exposeInMainWorld('ytmd', {
   checkUpdates: () => ipcRenderer.invoke('ytmd-update-check'),
   updateInfo: () => ipcRenderer.invoke('ytmd-update-info'),
   openReleases: () => ipcRenderer.send('ytmd-open-releases'),
+  getDevices: () => ipcRenderer.invoke('ytmd-devices'),
 
   // istatistikler
   getHistory: () => ipcRenderer.invoke('ytmd-history-get'),
   historyCount: () => ipcRenderer.invoke('ytmd-history-count'),
   clearHistory: () => ipcRenderer.invoke('ytmd-history-clear'),
   openStats: () => ipcRenderer.send('ytmd-open-stats'),
-  playVideo: (id) => ipcRenderer.send('ytmd-play-video', id)
+  playVideo: (id) => ipcRenderer.send('ytmd-play-video', id),
+  setGoal: (min) => ipcRenderer.send('ytmd-goal-set', min)
 });
