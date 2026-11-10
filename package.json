@@ -1,7 +1,7 @@
 {
   "name": "ytmusic-desktop",
   "productName": "YouTube Music Desktop",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "YouTube Music için basit masaüstü uygulaması",
   "main": "main.js",
   "scripts": {
@@ -56,7 +56,7 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "morg000",
+        "owner": "ServetSayarExe",
         "repo": "ytmusic-desktop",
         "releaseType": "release"
       }
@@ -66,5 +66,5 @@
   "dependencies": {
     "electron-updater": "^6.3.9"
   },
-  "repository": "https://github.com/morg000/ytmusic-desktop"
+  "repository": "https://github.com/ServetSayarExe/ytmusic-desktop"
 }
