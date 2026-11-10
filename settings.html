@@ -59,6 +59,9 @@
   .chip.on { background: var(--accent); border-color: transparent; }
   .muted { color: rgba(255,255,255,.55); font-size: 13px; }
   .eq.off { opacity: .4; pointer-events: none; }
+  .prog { height: 6px; border-radius: 6px; background: rgba(255,255,255,.1); margin-top: 8px; overflow: hidden; display: none; }
+  .prog.on { display: block; }
+  .prog i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 6px; transition: width .4s; }
 </style>
 </head>
 <body>
@@ -140,7 +143,10 @@
     <section id="hakkinda">
       <h2>Güncelleme</h2>
       <div class="box">
-        <div class="item"><div class="txt"><b id="ver">YouTube Music Desktop</b><span id="updState">—</span></div>
+        <div class="item"><div class="txt"><b id="ver">YouTube Music Desktop</b><span id="updState">—</span>
+          <div class="prog" id="updProg"><i id="updBar"></i></div></div>
+          <button class="btn primary" id="installUpd" style="display:none">Şimdi güncelle</button>
+          <button class="btn" id="manualUpd" style="display:none">Elle indir</button>
           <button class="btn" id="checkUpd">Güncellemeleri denetle</button></div>
       </div>
     </section>
@@ -211,7 +217,19 @@
   async function refreshCount() { const n = await window.ytmd.historyCount(); $('histCount').textContent = `${n} dinleme kayıtlı`; }
 
   // güncelleme
-  $('checkUpd').onclick = async () => { $('updState').textContent = 'Denetleniyor…'; $('updState').textContent = await window.ytmd.checkUpdates(); };
+  function showUpd(u) {
+    if (!u) return;
+    $('updState').textContent = u.state || 'En güncel sürümü kullanıyorsun';
+    $('updProg').classList.toggle('on', !!u.downloading);
+    $('updBar').style.width = (u.percent || 0) + '%';
+    $('installUpd').style.display = u.ready ? '' : 'none';
+    $('manualUpd').style.display = u.offerManual ? '' : 'none';
+    $('checkUpd').style.display = u.ready || u.downloading ? 'none' : '';
+  }
+  $('checkUpd').onclick = async () => { $('updState').textContent = 'Denetleniyor…'; showUpd(await window.ytmd.checkUpdates()); };
+  $('installUpd').onclick = () => { $('updState').textContent = 'Kuruluyor… uygulama kendiliğinden yeniden açılacak.'; $('installUpd').disabled = true; window.ytmd.installUpdate(); };
+  $('manualUpd').onclick = () => window.ytmd.openReleases();
+  setInterval(async () => showUpd(await window.ytmd.updateInfo()), 1500);
 
   window.ytmd.getSettings().then((s) => {
     S = s;
@@ -222,7 +240,7 @@
     $('preset').value = (s.eq && s.eq.preset) || 'Düz';
     showBands((s.eq && s.eq.bands) || [0, 0, 0, 0, 0]);
     $('ver').textContent = 'YouTube Music Desktop ' + (s.version || '');
-    $('updState').textContent = s.updateState || '';
+    $('updState').textContent = s.updateState || ''; window.ytmd.updateInfo().then(showUpd);
     refreshSleep(); refreshCount();
   });
 </script>
