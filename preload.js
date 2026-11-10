@@ -14,12 +14,13 @@ contextBridge.exposeInMainWorld('ytmd', {
   lyrics: (q) => ipcRenderer.invoke('ytmd-lyrics', q),
   share: (np) => ipcRenderer.invoke('ytmd-share', np),
   mini: () => ipcRenderer.send('ytmd-mini-toggle'),
+  openSettings: () => ipcRenderer.send('ytmd-open-settings'),
   sleepDone: () => ipcRenderer.send('ytmd-sleep-done'),
 
   // mini oynatıcı
   onNowPlaying: (cb) => ipcRenderer.on('ytmd-np-push', (_e, d) => cb(d)),
   miniReady: () => ipcRenderer.send('ytmd-mini-ready'),
-  control: (action) => ipcRenderer.send('ytmd-control', action),
+  control: (action, value) => ipcRenderer.send('ytmd-control', action, value),
   showMain: () => ipcRenderer.send('ytmd-show-main'),
 
   // ayarlar
