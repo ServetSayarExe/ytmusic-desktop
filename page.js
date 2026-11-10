@@ -120,7 +120,7 @@
     if (!np) return;
     current = np;
     const track = np.videoId || np.title + '|' + np.artist;
-    const key = track + '|' + np.paused;
+    const key = track + '|' + np.paused + '|' + Math.round(np.duration || 0);
     const now = Date.now();
     const expected = lastSentPos + (np.paused ? 0 : (now - lastSent) / 1000);
     const seeked = Math.abs(expected - np.currentTime) > 2.5;
@@ -386,6 +386,152 @@
     fading = false;
     toast('Uyku zamanlayıcı: iyi geceler 🌙');
   }
+
+  // ---------------- Spotify tarzı kitaplık (sol menü) ----------------
+  const LIB = (() => {
+    const SOURCES = { playlists: 'FEmusic_liked_playlists', albums: 'FEmusic_liked_albums', artists: 'FEmusic_library_corpus_artists' };
+    const LABEL = { playlists: 'Çalma Listeleri', albums: 'Albümler', artists: 'Sanatçılar' };
+    let tab = 'playlists', sort = 'recent', query = '', data = {}, panel = null, listEl = null, searchInput = null;
+    try { const c = JSON.parse(localStorage.getItem('ytmd-lib') || '{}'); if (c && typeof c === 'object') data = c; } catch (e) {}
+    try { tab = localStorage.getItem('ytmd-lib-tab') || 'playlists'; if (!SOURCES[tab]) tab = 'playlists'; } catch (e) {}
+
+    const txt = (o) => (o && o.runs ? o.runs.map((r) => r.text).join('') : (o && o.simpleText) || '');
+    const lastThumb = (t) => { const a = t && t.thumbnails; return a && a.length ? a[a.length - 1].url : ''; };
+    function parse(json) {
+      const out = [], seen = new Set();
+      (function walk(o, depth) {
+        if (!o || typeof o !== 'object' || depth > 40) return;
+        if (Array.isArray(o)) { for (const x of o) walk(x, depth + 1); return; }
+        const two = o.musicTwoRowItemRenderer, row = o.musicResponsiveListItemRenderer;
+        if (two || row) {
+          const r = two || row;
+          const ep = r.navigationEndpoint;
+          const id = ep && ep.browseEndpoint && ep.browseEndpoint.browseId;
+          if (id && !seen.has(id)) {
+            seen.add(id);
+            const title = two ? txt(r.title) : txt(r.flexColumns && r.flexColumns[0] && r.flexColumns[0].musicResponsiveListItemFlexColumnRenderer && r.flexColumns[0].musicResponsiveListItemFlexColumnRenderer.text);
+            const sub = two ? txt(r.subtitle) : txt(r.flexColumns && r.flexColumns[1] && r.flexColumns[1].musicResponsiveListItemFlexColumnRenderer && r.flexColumns[1].musicResponsiveListItemFlexColumnRenderer.text);
+            const thumb = two ? lastThumb(r.thumbnailRenderer && r.thumbnailRenderer.musicThumbnailRenderer && r.thumbnailRenderer.musicThumbnailRenderer.thumbnail)
+                              : lastThumb(r.thumbnail && r.thumbnail.musicThumbnailRenderer && r.thumbnail.musicThumbnailRenderer.thumbnail);
+            if (title) out.push({ id, title, sub, thumb, round: !!row, ep: { browseEndpoint: ep.browseEndpoint } });
+          }
+          return;
+        }
+        for (const k in o) walk(o[k], depth + 1);
+      })(json, 0);
+      return out;
+    }
+    async function load(which) {
+      const app = document.querySelector('ytmusic-app');
+      if (!app || !app.networkManager || !app.networkManager.fetch) return;
+      try {
+        const res = await app.networkManager.fetch('/browse', { browseId: SOURCES[which] });
+        const items = parse(res);
+        if (items.length || !data[which]) {
+          data[which] = { items, at: Date.now() };
+          try { localStorage.setItem('ytmd-lib', JSON.stringify(data)); } catch (e) {}
+          if (which === tab) render();
+        }
+      } catch (e) {}
+    }
+    function go(item) {
+      const before = location.href;
+      try {
+        (listEl || document.body).dispatchEvent(new CustomEvent('yt-navigate', { bubbles: true, composed: true, detail: { endpoint: item.ep } }));
+      } catch (e) {}
+      setTimeout(() => { if (location.href === before) location.assign('/browse/' + encodeURIComponent(item.id)); }, 400);
+    }
+    function render() {
+      if (!listEl) return;
+      let items = ((data[tab] && data[tab].items) || []).slice();
+      if (query) { const q = query.toLocaleLowerCase('tr'); items = items.filter((x) => (x.title + ' ' + x.sub).toLocaleLowerCase('tr').includes(q)); }
+      if (sort === 'alpha') items.sort((a, b) => a.title.localeCompare(b.title, 'tr'));
+      // "Beğendiğim müzikler" her zaman en üstte
+      const liked = items.findIndex((x) => x.id === 'VLLM'); if (liked > 0) items.unshift(items.splice(liked, 1)[0]);
+      if (!items.length) {
+        listEl.replaceChildren(el('div', { class: 'ytmd-lib-empty', text: data[tab] ? (query ? 'Eşleşen bir şey yok' : 'Burası henüz boş') : 'Yükleniyor…' }));
+        return;
+      }
+      listEl.replaceChildren(...items.map((x) => {
+        const cover = x.thumb ? el('img', { class: 'ytmd-lib-cover' + (x.round ? ' round' : ''), src: x.thumb.replace(/=w\d+-h\d+/, '=w120-h120'), alt: '', loading: 'lazy' })
+                              : el('div', { class: 'ytmd-lib-cover ph' + (x.round ? ' round' : ''), text: (x.title[0] || '♪').toUpperCase() });
+        const subEl = el('div', { class: 'ytmd-lib-sub' }, [x.id === 'VLLM' ? el('span', { class: 'ytmd-lib-pin', text: '📌 ' }) : null, document.createTextNode(x.sub || LABEL[tab])]);
+        const rowEl = el('a', { class: 'ytmd-lib-row', href: '/browse/' + encodeURIComponent(x.id), title: x.title, onclick: (e) => { e.preventDefault(); go(x); } },
+          [cover, el('div', { class: 'ytmd-lib-meta' }, [el('div', { class: 'ytmd-lib-title', text: x.title }), subEl])]);
+        if (location.pathname + location.search === '/browse/' + x.id || location.search.includes('list=' + x.id.replace(/^VL/, ''))) rowEl.classList.add('active');
+        return rowEl;
+      }));
+    }
+    function build() {
+      const chips = el('div', { class: 'ytmd-lib-chips' }, Object.keys(SOURCES).map((k) => el('button', {
+        class: 'ytmd-lib-chip' + (k === tab ? ' on' : ''), text: LABEL[k], 'data-k': k,
+        onclick: () => {
+          tab = k; try { localStorage.setItem('ytmd-lib-tab', k); } catch (e) {}
+          chips.querySelectorAll('.ytmd-lib-chip').forEach((c) => c.classList.toggle('on', c.getAttribute('data-k') === k));
+          render(); load(k);
+        }
+      })));
+      searchInput = el('input', { class: 'ytmd-lib-search', placeholder: 'Kitaplıkta ara', oninput: () => { query = searchInput.value.trim(); render(); } });
+      const searchBtn = el('button', { class: 'ytmd-lib-icon', title: 'Ara', onclick: () => { panel.classList.toggle('searching'); if (panel.classList.contains('searching')) searchInput.focus(); else { searchInput.value = ''; query = ''; render(); } } },
+        [svgIcon('0 0 24 24', ['M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14z', 'M20 20l-4-4'], { size: 16, width: 2 })]);
+      const sortBtn = el('button', { class: 'ytmd-lib-sort', text: 'Yakın tarihli', onclick: () => {
+        sort = sort === 'recent' ? 'alpha' : 'recent'; sortBtn.textContent = sort === 'recent' ? 'Yakın tarihli' : 'Alfabetik'; render();
+      } });
+      listEl = el('div', { class: 'ytmd-lib-list' });
+      panel = el('div', { id: 'ytmd-lib' }, [
+        el('div', { class: 'ytmd-lib-head' }, [el('div', { class: 'ytmd-lib-h', text: 'Kitaplığın' })]),
+        chips,
+        el('div', { class: 'ytmd-lib-tools' }, [searchBtn, searchInput, sortBtn]),
+        listEl
+      ]);
+      return panel;
+    }
+    // Paneli sol menüye yerleştir; YouTube'un yazı listesi halindeki çalma listelerini gizle
+    function mount() {
+      const guide = document.querySelector('ytmusic-guide-renderer');
+      if (!guide) return false;
+      const host = guide.querySelector('#sections') || guide;
+      if (!panel) build();
+      if (panel.parentElement !== host) host.appendChild(panel);
+      guide.querySelectorAll('ytmusic-guide-entry-renderer').forEach((e) => {
+        const d = e.data || (e.__data && e.__data.data);
+        if (d && !d.isPrimary) e.classList.add('ytmd-lib-hidden');
+      });
+      root.classList.add('ytmd-lib-on');
+      return true;
+    }
+    return { _set: (k, v) => { data[k] = v; }, mount, load, render, refresh: () => Object.keys(SOURCES).forEach((k, i) => setTimeout(() => load(k), i * 700)), parse };
+  })();
+  if (THEME) {
+    const tryMount = () => { if (LIB.mount()) { LIB.render(); } };
+    tryMount();
+    setInterval(tryMount, 2000);           // YouTube menüyü yeniden çizerse tekrar yerleştir
+    setTimeout(() => LIB.refresh(), 2500); // açılışta tazele
+    setInterval(() => LIB.refresh(), 10 * 60 * 1000);
+    window.addEventListener('yt-navigate-finish', () => LIB.render());
+  }
+
+  // ---------------- Güncelleme kartı ----------------
+  const updTitle = el('div', { class: 'ytmd-upd-title' });
+  const updNotes = el('div', { class: 'ytmd-upd-notes' });
+  const updNow = el('button', { class: 'ytmd-upd-btn primary', text: 'Şimdi güncelle', onclick: () => {
+    updCard.classList.add('busy'); updNow.textContent = 'Kuruluyor…'; updLater.style.display = 'none';
+    updNotes.textContent = 'Uygulama birkaç saniye içinde kendiliğinden yeniden açılacak.';
+    try { api.installUpdate && api.installUpdate(); } catch (e) {}
+  } });
+  const updLater = el('button', { class: 'ytmd-upd-btn', text: 'Sonra', onclick: () => {
+    updCard.classList.remove('show'); toast('Uygulamayı kapattığında güncelleme kendiliğinden kurulacak');
+  } });
+  const updCard = el('div', { id: 'ytmd-update' }, [
+    el('div', { class: 'ytmd-upd-icon' }, [svgIcon('0 0 24 24', ['M12 3v12', 'M7 10l5 5 5-5', 'M5 21h14'], { size: 20, width: 2 })]),
+    el('div', { class: 'ytmd-upd-body' }, [updTitle, updNotes, el('div', { class: 'ytmd-upd-actions' }, [updNow, updLater])])
+  ]);
+  root.appendChild(updCard);
+  window.__ytmdUpdate = (u = {}) => {
+    updTitle.textContent = 'Yeni sürüm hazır' + (u.version ? ': ' + u.version : '');
+    updNotes.textContent = u.notes || 'Yeni özellikler ve düzeltmeler içeriyor.';
+    updCard.classList.add('show');
+  };
 
   // ---------------- Ayarları uygula (ana işlem çağırır) ----------------
   window.__ytmdApply = (s = {}) => {
