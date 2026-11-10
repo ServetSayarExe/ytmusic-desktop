@@ -2,6 +2,11 @@
 
 YouTube Music'i kendi penceresinde açan masaüstü uygulaması. Google hesabınla giriş yaparsın, Premium aboneliğin olduğu gibi çalışır.
 
+## 1.8 ile gelenler
+
+- **Şarkı sözü çevirisi:** sözler panelinde ve tam ekranda "Çeviri" düğmesi; her satırın altında Türkçesi çıkar
+- **Ses yükseltme:** sessiz kayıtlar için sesi %200'e kadar aç (cızırtı önleyici sınırlayıcıyla)
+
 ## 1.7 ile gelenler
 
 - **Sıradakiler paneli:** sağda Spotify gibi kuyruk listesi; tıkladığın şarkıya geçer
