@@ -172,6 +172,16 @@ ytmusic-player-bar #progress-bar {
 ytmusic-player-bar .thumbnail-image-wrapper,
 ytmusic-player-bar img.image { border-radius: 10px !important; }
 
+/* Düzen: şarkı bilgisi solda, kontroller ortada, diğer tuşlar sağda (Spotify gibi) */
+ytmusic-player-bar {
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
+  grid-template-areas: "middle start end" !important;
+  column-gap: 16px;
+}
+ytmusic-player-bar .middle-controls { justify-self: start !important; max-width: 100%; min-width: 0; overflow: hidden; padding-left: 14px; }
+ytmusic-player-bar .left-controls { justify-self: center !important; }
+ytmusic-player-bar #right-controls { justify-self: end !important; }
+
 /* Oynat tuşu: beyaz yuvarlak */
 ytmusic-player-bar #play-pause-button {
   background: #fff !important; border-radius: 50% !important;
@@ -334,3 +344,46 @@ html.ytmd-mode-amoled { background: #000 !important; }
 .ytmd-anim.ytmd-track-change ytmusic-player-bar img.image { animation: ytmd-pop .6s cubic-bezier(.2, .8, .2, 1); }
 .ytmd-anim.ytmd-track-change ytmusic-player-bar .content-info-wrapper { animation: ytmd-rise .45s ease; }
 .ytmd-anim #ytmd-ambient { transition: background-image 1.4s ease, filter .6s; }
+
+/* ===================== Spotify tarzı kitaplık ===================== */
+.ytmd-lib-on ytmusic-guide-entry-renderer.ytmd-lib-hidden { display: none !important; }
+#ytmd-lib { margin: 10px 8px 0; display: flex; flex-direction: column; min-height: 0; font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; color: #fff; }
+.ytmd-lib-head { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px 10px; }
+.ytmd-lib-h { font: 800 17px "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
+.ytmd-lib-chips { display: flex; gap: 5px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none !important; padding: 0 6px 8px; }
+.ytmd-lib-chip {
+  border: 0; border-radius: 999px; padding: 6px 10px; cursor: pointer; white-space: nowrap; flex: none;
+  background: rgba(255, 255, 255, 0.08); color: #fff; font: 600 12px inherit; font-family: inherit;
+  transition: background .15s, color .15s;
+}
+.ytmd-lib-chip:hover { background: rgba(255, 255, 255, 0.14); }
+.ytmd-lib-chip.on { background: #fff; color: #0b0b0f; }
+.ytmd-lib-tools { display: flex; align-items: center; gap: 6px; padding: 2px 6px 6px; }
+.ytmd-lib-icon { width: 30px; height: 30px; border: 0; border-radius: 50%; background: transparent; color: rgba(255,255,255,.75); cursor: pointer; display: grid; place-items: center; flex: none; }
+.ytmd-lib-icon:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+.ytmd-lib-search {
+  flex: 1; min-width: 0; height: 30px; padding: 0 10px; border-radius: 8px; border: 0; outline: none;
+  background: rgba(255, 255, 255, 0.08); color: #fff; font: 13px inherit; font-family: inherit; display: none;
+}
+#ytmd-lib.searching .ytmd-lib-search { display: block; }
+.ytmd-lib-sort { margin-left: auto; border: 0; background: transparent; color: rgba(255,255,255,.7); font: 600 12.5px inherit; font-family: inherit; cursor: pointer; padding: 6px 8px; border-radius: 8px; white-space: nowrap; }
+.ytmd-lib-sort:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
+.ytmd-lib-list { display: flex; flex-direction: column; gap: 2px; padding-bottom: 100px; }
+.ytmd-lib-row {
+  display: flex; align-items: center; gap: 12px; padding: 6px 8px; border-radius: 8px;
+  text-decoration: none; color: inherit; cursor: pointer; transition: background .12s;
+}
+.ytmd-lib-row:hover { background: rgba(255, 255, 255, 0.07); }
+.ytmd-lib-row.active { background: rgba(255, 255, 255, 0.11); }
+.ytmd-lib-row.active .ytmd-lib-title { color: var(--ytmd-accent); }
+.ytmd-lib-cover { width: 48px; height: 48px; border-radius: 6px; object-fit: cover; flex: none; background: #26262e; }
+.ytmd-lib-cover.round { border-radius: 50%; }
+.ytmd-lib-cover.ph { display: grid; place-items: center; font-weight: 800; font-size: 18px; color: rgba(255,255,255,.8);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--ytmd-accent) 70%, #222), #1b1b22); }
+.ytmd-lib-meta { min-width: 0; flex: 1; }
+.ytmd-lib-title { font-size: 14.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ytmd-lib-sub { font-size: 12.5px; color: rgba(255, 255, 255, 0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+.ytmd-lib-pin { color: var(--ytmd-accent); }
+.ytmd-lib-empty { color: rgba(255,255,255,.55); font-size: 13px; padding: 14px 10px; }
+/* daraltılmış (simge) menüde kitaplığı gösterme */
+ytmusic-app-layout[guide-collapsed] #ytmd-lib, #mini-guide #ytmd-lib { display: none; }
