@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('ytmd', {
   // YouTube Music sayfası
   update: (np) => ipcRenderer.send('ytmd-np', np),
   lyrics: (q) => ipcRenderer.invoke('ytmd-lyrics', q),
+  translate: (lines) => ipcRenderer.invoke('ytmd-translate', lines),
   share: (np) => ipcRenderer.invoke('ytmd-share', np),
   mini: () => ipcRenderer.send('ytmd-mini-toggle'),
   openSettings: () => ipcRenderer.send('ytmd-open-settings'),
