@@ -91,7 +91,8 @@ const pageJS = (code) => { if (win) win.webContents.executeJavaScript(code).catc
 const showMain = () => { if (win) { win.show(); win.focus(); } };
 
 // ---------------- Oynatıcı kontrolü ----------------
-function control(action) {
+function control(action, value) {
+  if (action === 'seek') { const t = Number(value); if (isFinite(t) && t >= 0) pageJS(`window.__ytmdControl && window.__ytmdControl('seek', ${t})`); return; }
   if (!['playpause', 'next', 'prev'].includes(action)) return;
   const map = { playpause: 'toggle', next: 'next', prev: 'prev' };
   pageJS(`window.__ytmdControl && window.__ytmdControl('${map[action]}')`);
@@ -460,11 +461,12 @@ ipcMain.handle('ytmd-share', (e, d) => {
   return true;
 });
 ipcMain.on('ytmd-mini-toggle', (e) => { if (fromMain(e)) toggleMini(); });
+ipcMain.on('ytmd-open-settings', (e) => { if (fromMain(e)) openSettings(); });
 ipcMain.on('ytmd-sleep-done', (e) => { if (fromMain(e)) { sleep = { mode: 'off', until: 0 }; buildTrayMenu(); } });
 // mini oynatıcı
 const fromMini = (e) => miniWin && !miniWin.isDestroyed() && e.sender === miniWin.webContents;
 ipcMain.on('ytmd-mini-ready', (e) => { if (fromMini(e)) pushMini(); });
-ipcMain.on('ytmd-control', (e, a) => { if (fromMini(e)) control(a); });
+ipcMain.on('ytmd-control', (e, a, v) => { if (fromMini(e)) control(a, v); });
 ipcMain.on('ytmd-show-main', (e) => { if (fromMini(e)) showMain(); });
 // ayarlar
 ipcMain.handle('ytmd-settings-get', (e) => (isFrom(e, settingsRef) ? { ...settings, accent: accentHex, version: app.getVersion(), updateState } : null));
