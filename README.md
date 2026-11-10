@@ -2,6 +2,16 @@
 
 YouTube Music'i kendi penceresinde açan masaüstü uygulaması. Google hesabınla giriş yaparsın, Premium aboneliğin olduğu gibi çalışır.
 
+## 1.7 ile gelenler
+
+- **Sıradakiler paneli:** sağda Spotify gibi kuyruk listesi; tıkladığın şarkıya geçer
+- **Ses menüsü:** oynatma hızı (0,75x–1,5x), yumuşak geçiş (crossfade), ses çıkış cihazı seçimi
+- **"Sana özel" ana sayfa:** selamlama, kitaplık kısayolları ve son çaldıkların
+- **Şarkı kartı:** çalan şarkıyı kapaklı şık bir görsel olarak kopyala ya da kaydet
+- **Görev çubuğunda ilerleme:** şarkının ilerleyişi uygulama simgesinde görünür
+- **Yıllık özet:** hikâye gibi akan animasyonlu slaytlar, sonunda kaydedilebilir özet kartı
+- **Dinleme hedefleri:** günlük hedef, seri ve 13 rozet
+
 ## 1.5 ile gelenler
 
 - **Ayarlar penceresi** (tepsi → Ayarlar): tüm seçenekler tek yerde, değişiklikler anında uygulanır
