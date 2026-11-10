@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('ytmd', {
   share: (np) => ipcRenderer.invoke('ytmd-share', np),
   mini: () => ipcRenderer.send('ytmd-mini-toggle'),
   openSettings: () => ipcRenderer.send('ytmd-open-settings'),
+  installUpdate: () => ipcRenderer.send('ytmd-update-install'),
   sleepDone: () => ipcRenderer.send('ytmd-sleep-done'),
 
   // mini oynatıcı
@@ -29,6 +30,8 @@ contextBridge.exposeInMainWorld('ytmd', {
   getSleep: () => ipcRenderer.invoke('ytmd-sleep-get'),
   setSleep: (mode) => ipcRenderer.send('ytmd-sleep-set', mode),
   checkUpdates: () => ipcRenderer.invoke('ytmd-update-check'),
+  updateInfo: () => ipcRenderer.invoke('ytmd-update-info'),
+  openReleases: () => ipcRenderer.send('ytmd-open-releases'),
 
   // istatistikler
   getHistory: () => ipcRenderer.invoke('ytmd-history-get'),
