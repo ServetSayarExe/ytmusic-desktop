@@ -1,7 +1,7 @@
 // YouTube Music Desktop
 const {
   app, BrowserWindow, Tray, Menu, shell, session, globalShortcut, nativeImage,
-  ipcMain, net, Notification, clipboard, screen
+  ipcMain, net, Notification, clipboard, screen, dialog
 } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -60,7 +60,8 @@ const DEFAULTS = {
   theme: true, themeMode: 'dark', transitions: true,
   notifications: true, discord: true, discordClientId: '',
   eq: { enabled: false, preset: 'Düz', bands: [0, 0, 0, 0, 0] }, normalize: false,
-  stats: true, miniBounds: null
+  stats: true, miniBounds: null,
+  crossfade: 0, speed: 1, outputDevice: '', taskbarProgress: true, homeHero: true, dailyGoal: 30
 };
 const settings = readJSON(settingsFile, DEFAULTS);
 const saveSettings = () => { try { fs.writeFileSync(settingsFile, JSON.stringify(settings)); } catch {} };
@@ -191,9 +192,50 @@ function commitListen(final) {
     });
     if (history.length > 50000) history = history.slice(-50000);
     saveHistory(final);
+    if (!final) checkGoal();
   }
   listen = null;
 }
+
+// ---------------- Günlük hedef ----------------
+const dayKey = (t) => { const d = new Date(t); return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate(); };
+function goalStreak() {
+  const goal = (settings.dailyGoal || 30) * 60, per = new Map();
+  for (const x of history) { const k = dayKey(x.t); per.set(k, (per.get(k) || 0) + (x.sec || 0)); }
+  const d = new Date(); d.setHours(12, 0, 0, 0);
+  if ((per.get(dayKey(d)) || 0) < goal) d.setDate(d.getDate() - 1);
+  let n = 0; while ((per.get(dayKey(d)) || 0) >= goal) { n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+let goalToday = null; // { day, done }
+function checkGoal() {
+  const today = dayKey(Date.now());
+  const sec = history.reduce((s, x) => (dayKey(x.t) === today ? s + (x.sec || 0) : s), 0);
+  const done = sec >= (settings.dailyGoal || 30) * 60;
+  if (!goalToday || goalToday.day !== today) { goalToday = { day: today, done }; return; }
+  if (done && !goalToday.done) {
+    goalToday.done = true;
+    const n = goalStreak();
+    pageJS(`window.__ytmdToast && window.__ytmdToast(${JSON.stringify(`🎯 Günlük hedefin tamam! ${n > 1 ? n + ' günlük seri 🔥' : 'Serin başladı 🔥'}`)})`);
+  }
+}
+
+checkGoal();
+
+// ---------------- Görev çubuğunda ilerleme ----------------
+let lastProg = null;
+function updateProgress() {
+  if (!win || win.isDestroyed() || process.platform !== 'win32') return;
+  let frac = -1, mode = 'none';
+  if (settings.taskbarProgress && np && np.duration > 0 && Date.now() - npAt < 120000) {
+    const t = np.currentTime + (np.paused ? 0 : (Date.now() - npAt) / 1000 * (np.rate || 1));
+    frac = Math.max(0.001, Math.min(1, t / np.duration)); mode = np.paused ? 'paused' : 'normal';
+  }
+  if (lastProg && lastProg.mode === mode && Math.abs(lastProg.frac - frac) < 0.004) return;
+  lastProg = { frac, mode };
+  try { frac < 0 ? win.setProgressBar(-1) : win.setProgressBar(frac, { mode }); } catch (e) {}
+}
+setInterval(updateProgress, 1000);
 
 // ---------------- Şimdi çalan ----------------
 let np = null, npAt = 0, lastTrackKey = '';
@@ -206,6 +248,7 @@ async function onNowPlaying(data) {
   lastTrackKey = trackKey;
 
   if (thumbPlaying !== !data.paused) { thumbPlaying = !data.paused; updateThumbar(); }
+  lastProg = null; updateProgress();
   if (tray) tray.setToolTip(`${data.title}${data.artist ? ' – ' + data.artist : ''}`.slice(0, 127));
   updateDiscord();
   pushMini();
@@ -235,8 +278,8 @@ function updateDiscord() {
   if (/^https:\/\//.test(art) && art.length < 256) a.assets.large_image = art;
   a.assets.large_text = clip(np.album || np.title, 128);
   if (!np.paused && np.duration > 0) {
-    const start = Date.now() - np.currentTime * 1000;
-    a.timestamps = { start: Math.round(start), end: Math.round(start + np.duration * 1000) };
+    const r = np.rate || 1, start = Date.now() - np.currentTime / r * 1000;
+    a.timestamps = { start: Math.round(start), end: Math.round(start + np.duration / r * 1000) };
   }
   if (np.videoId) a.buttons = [{ label: "YouTube Music'te dinle", url: `https://music.youtube.com/watch?v=${np.videoId}` }];
   discord.setActivity(a);
@@ -283,7 +326,10 @@ async function findLyrics({ title, artist, album, duration }) {
 }
 
 // ---------------- Sayfa ayarları ----------------
-const pageSettings = () => ({ themeMode: settings.themeMode, transitions: settings.transitions, eq: settings.eq, normalize: settings.normalize });
+const pageSettings = () => ({
+  themeMode: settings.themeMode, transitions: settings.transitions, eq: settings.eq, normalize: settings.normalize,
+  crossfade: settings.crossfade, speed: settings.speed, outputDevice: settings.outputDevice, homeHero: settings.homeHero
+});
 const pushPageSettings = () => pageJS(`window.__ytmdApply && window.__ytmdApply(${JSON.stringify(pageSettings())})`);
 
 function setSetting(key, value) {
@@ -291,7 +337,12 @@ function setSetting(key, value) {
   switch (key) {
     case 'theme': settings.theme = bool(value); saveSettings(); quitting = true; app.relaunch(); app.quit(); return;
     case 'themeMode': if (!['dark', 'amoled', 'cover'].includes(value)) return; settings.themeMode = value; break;
-    case 'transitions': case 'normalize': case 'notifications': case 'stats': settings[key] = bool(value); break;
+    case 'transitions': case 'normalize': case 'notifications': case 'stats': case 'homeHero': settings[key] = bool(value); break;
+    case 'taskbarProgress': settings.taskbarProgress = bool(value); if (!settings.taskbarProgress && win) win.setProgressBar(-1); lastProg = null; break;
+    case 'crossfade': { const n = Math.round(+value); if (!(n >= 0 && n <= 12)) return; settings.crossfade = n; break; }
+    case 'speed': { const n = +value; if (![0.75, 0.9, 1, 1.1, 1.25, 1.5].includes(n)) return; settings.speed = n; break; }
+    case 'outputDevice': if (typeof value !== 'string' || value.length > 200) return; settings.outputDevice = value; break;
+    case 'dailyGoal': { const n = Math.round(+value); if (!(n >= 5 && n <= 600)) return; settings.dailyGoal = n; goalToday = null; break; }
     case 'discord': settings.discord = bool(value); applyDiscordSettings(); updateDiscord(); break;
     case 'eq': {
       if (!value || typeof value !== 'object') return;
@@ -416,13 +467,13 @@ function toggleMini() {
 }
 function pushMini() {
   if (!miniWin || miniWin.isDestroyed() || !np) return;
-  const t = np.currentTime + (np.paused ? 0 : (Date.now() - npAt) / 1000);
+  const t = np.currentTime + (np.paused ? 0 : (Date.now() - npAt) / 1000 * (np.rate || 1));
   miniWin.webContents.send('ytmd-np-push', { ...np, currentTime: t, accent: accentHex });
 }
 
 // ---------------- Otomatik güncelleme ----------------
 let updater = null, updateState = '', updateReady = false, pendingUpdate = null, downloading = null, updateFailed = false;
-const RELEASES_URL = 'https://github.com/morg000/ytmusic-desktop/releases/latest';
+const RELEASES_URL = 'https://github.com/ServetSayarExe/ytmusic-desktop/releases/latest';
 function updateInfo() {
   const stalled = !!(downloading && Date.now() - downloading.at > 60000);
   return { state: stalled ? `İndirme takıldı (%${downloading.percent}). İnternet yavaş olabilir; "Elle indir" ile de kurabilirsin.` : updateState,
@@ -486,6 +537,41 @@ ipcMain.handle('ytmd-share', (e, d) => {
   clipboard.writeText(`https://music.youtube.com/watch?v=${d.videoId}`);
   return true;
 });
+const PAGE_KEYS = ['crossfade', 'speed', 'outputDevice'];
+ipcMain.on('ytmd-page-set', (e, k, v) => { if (fromMain(e) && PAGE_KEYS.includes(k)) setSetting(k, v); });
+ipcMain.handle('ytmd-recent', (e) => {
+  if (!fromMain(e)) return [];
+  const out = [], seen = new Set();
+  for (let i = history.length - 1; i >= 0 && out.length < 12; i--) {
+    const x = history[i]; if (!x.id || seen.has(x.id)) continue; seen.add(x.id);
+    out.push({ id: x.id, title: x.title, artist: x.artist, art: x.art });
+  }
+  return out;
+});
+const IMG_HOSTS = /^https:\/\/([a-z0-9-]+\.)*(googleusercontent\.com|ytimg\.com|ggpht\.com)\//i;
+ipcMain.handle('ytmd-cover-data', async (e, url) => {
+  if (!(fromMain(e) || isFrom(e, statsRef)) || typeof url !== 'string' || !IMG_HOSTS.test(url)) return null;
+  try {
+    const res = await net.fetch(url); if (!res.ok) return null;
+    const buf = Buffer.from(await res.arrayBuffer()); if (buf.length > 8 * 1048576) return null;
+    return `data:${res.headers.get('content-type') || 'image/jpeg'};base64,${buf.toString('base64')}`;
+  } catch { return null; }
+});
+const pngFrom = (d) => (typeof d === 'string' && d.startsWith('data:image/png;base64,') && d.length < 30 * 1048576 ? nativeImage.createFromDataURL(d) : null);
+ipcMain.handle('ytmd-copy-image', (e, d) => {
+  if (!(fromMain(e) || isFrom(e, statsRef))) return false;
+  const img = pngFrom(d); if (!img || img.isEmpty()) return false;
+  clipboard.writeImage(img); return true;
+});
+ipcMain.handle('ytmd-save-image', async (e, d, name) => {
+  if (!(fromMain(e) || isFrom(e, statsRef))) return false;
+  const img = pngFrom(d); if (!img || img.isEmpty()) return false;
+  const safe = String(name || 'kart').replace(/[\\/:*?"<>|]+/g, ' ').trim().slice(0, 80) || 'kart';
+  const parent = BrowserWindow.fromWebContents(e.sender);
+  const r = await dialog.showSaveDialog(parent, { title: 'Görseli kaydet', defaultPath: path.join(app.getPath('pictures'), safe + '.png'), filters: [{ name: 'PNG görsel', extensions: ['png'] }] });
+  if (r.canceled || !r.filePath) return false;
+  try { fs.writeFileSync(r.filePath, img.toPNG()); return true; } catch { return false; }
+});
 ipcMain.on('ytmd-mini-toggle', (e) => { if (fromMain(e)) toggleMini(); });
 ipcMain.on('ytmd-open-settings', (e) => { if (fromMain(e)) openSettings(); });
 ipcMain.on('ytmd-update-install', (e) => { if (fromMain(e) || isFrom(e, settingsRef)) installUpdate(); });
@@ -506,10 +592,15 @@ ipcMain.handle('ytmd-update-check', async (e) => {
   return updateInfo();
 });
 ipcMain.handle('ytmd-update-info', (e) => (isFrom(e, settingsRef) ? updateInfo() : null));
+ipcMain.handle('ytmd-devices', async (e) => {
+  if (!isFrom(e, settingsRef) || !win) return [];
+  try { const l = await win.webContents.executeJavaScript('window.__ytmdDevices ? window.__ytmdDevices() : []'); return Array.isArray(l) ? l : []; } catch { return []; }
+});
 ipcMain.on('ytmd-open-releases', (e) => { if (isFrom(e, settingsRef)) shell.openExternal(RELEASES_URL); });
 // istatistikler
 const fromStatsOrSettings = (e) => isFrom(e, statsRef) || isFrom(e, settingsRef);
-ipcMain.handle('ytmd-history-get', (e) => (fromStatsOrSettings(e) ? { history, accent: accentHex } : null));
+ipcMain.handle('ytmd-history-get', (e) => (fromStatsOrSettings(e) ? { history, accent: accentHex, goal: settings.dailyGoal || 30 } : null));
+ipcMain.on('ytmd-goal-set', (e, m) => { if (fromStatsOrSettings(e)) setSetting('dailyGoal', m); });
 ipcMain.handle('ytmd-history-count', (e) => (fromStatsOrSettings(e) ? history.length : 0));
 ipcMain.handle('ytmd-history-clear', (e) => { if (!isFrom(e, settingsRef)) return false; history = []; saveHistory(true); return true; });
 ipcMain.on('ytmd-open-stats', (e) => { if (isFrom(e, settingsRef)) openStats(); });
