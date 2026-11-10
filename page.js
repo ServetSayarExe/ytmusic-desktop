@@ -45,6 +45,7 @@
     share: () => svgIcon('0 0 24 24', ['M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1', 'M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1'], { size: 16, width: 2 }),
     full: () => svgIcon('0 0 24 24', ['M4 9V4h5', 'M20 9V4h-5', 'M4 15v5h5', 'M20 15v5h-5'], { size: 16, width: 2 }),
     mini: () => svgIcon('0 0 24 24', ['M3 5h18v14H3z', 'M12 12h7v5h-7z'], { size: 16, width: 1.8 }),
+    gear: () => svgIcon('0 0 24 24', ['M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z', 'M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z'], { size: 16, width: 1.7 }),
     close: (s = 12) => svgIcon('0 0 10 10', ['M1 1l8 8', 'M9 1L1 9'], { size: s, width: 1.4 }),
     prev: () => svgIcon('0 0 24 24', ['M6 5h2v14H6z', 'M20 5v14L9 12z'], { size: 26, stroke: false }),
     next: () => svgIcon('0 0 24 24', ['M16 5h2v14h-2z', 'M4 5v14l11-7z'], { size: 26, stroke: false }),
@@ -232,6 +233,7 @@
   const actBtn = (title, icon, label, onclick, id) =>
     el('button', { class: 'ytmd-act', title, id: id || '', onclick }, [icon, label ? el('span', { text: label }) : null]);
   root.appendChild(el('div', { id: 'ytmd-actions' }, [
+    actBtn('Ayarlar', ICON.gear(), '', () => api.openSettings && api.openSettings()),
     actBtn('Mini oynatıcı', ICON.mini(), '', () => api.mini && api.mini()),
     actBtn('Şarkıyı paylaş (bağlantıyı kopyala)', ICON.share(), '', share),
     actBtn('Tam ekran', ICON.full(), '', () => setFull(true)),
