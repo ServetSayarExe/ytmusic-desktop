@@ -61,7 +61,7 @@ const DEFAULTS = {
   notifications: true, discord: true, discordClientId: '',
   eq: { enabled: false, preset: 'Düz', bands: [0, 0, 0, 0, 0] }, normalize: false,
   stats: true, miniBounds: null,
-  crossfade: 0, speed: 1, outputDevice: '', taskbarProgress: true, homeHero: true, dailyGoal: 30
+  crossfade: 0, speed: 1, outputDevice: '', taskbarProgress: true, homeHero: true, dailyGoal: 30, boost: 100
 };
 const settings = readJSON(settingsFile, DEFAULTS);
 const saveSettings = () => { try { fs.writeFileSync(settingsFile, JSON.stringify(settings)); } catch {} };
@@ -325,10 +325,44 @@ async function findLyrics({ title, artist, album, duration }) {
   return out;
 }
 
+// ---------------- Şarkı sözü çevirisi (Google Çeviri) ----------------
+const trCache = new Map();
+async function gtx(text) {
+  try {
+    const res = await net.fetch('https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=tr&dt=t&q=' + encodeURIComponent(text));
+    if (!res.ok) return null;
+    const j = await res.json();
+    if (!Array.isArray(j) || !Array.isArray(j[0])) return null;
+    return { text: j[0].map((x) => (x && x[0]) || '').join(''), src: String(j[2] || '') };
+  } catch { return null; }
+}
+async function translateLines(lines) {
+  const key = lines.join('\n');
+  if (trCache.has(key)) return trCache.get(key);
+  const out = new Array(lines.length).fill('');
+  const idx = lines.map((l, i) => [i, l.trim()]).filter(([, l]) => l);
+  let src = '', i = 0;
+  while (i < idx.length) {                       // ~1500 karakterlik parçalar
+    const part = []; let len = 0;
+    while (i < idx.length && (len + idx[i][1].length < 1500 || !part.length)) { part.push(idx[i]); len += idx[i][1].length + 1; i++; }
+    const r = await gtx(part.map((p) => p[1]).join('\n'));
+    if (!r) return null;
+    if (!src) src = r.src;
+    if (src === 'tr') break;
+    const got = r.text.split('\n');
+    if (got.length === part.length) part.forEach(([k], n) => { out[k] = got[n].trim(); });
+    else for (const [k, l] of part) { const one = await gtx(l); out[k] = one ? one.text.trim() : ''; }
+  }
+  const result = { lines: out, src };
+  if (trCache.size > 200) trCache.clear();
+  trCache.set(key, result);
+  return result;
+}
+
 // ---------------- Sayfa ayarları ----------------
 const pageSettings = () => ({
   themeMode: settings.themeMode, transitions: settings.transitions, eq: settings.eq, normalize: settings.normalize,
-  crossfade: settings.crossfade, speed: settings.speed, outputDevice: settings.outputDevice, homeHero: settings.homeHero
+  crossfade: settings.crossfade, speed: settings.speed, outputDevice: settings.outputDevice, homeHero: settings.homeHero, boost: settings.boost
 });
 const pushPageSettings = () => pageJS(`window.__ytmdApply && window.__ytmdApply(${JSON.stringify(pageSettings())})`);
 
@@ -341,6 +375,7 @@ function setSetting(key, value) {
     case 'taskbarProgress': settings.taskbarProgress = bool(value); if (!settings.taskbarProgress && win) win.setProgressBar(-1); lastProg = null; break;
     case 'crossfade': { const n = Math.round(+value); if (!(n >= 0 && n <= 12)) return; settings.crossfade = n; break; }
     case 'speed': { const n = +value; if (![0.75, 0.9, 1, 1.1, 1.25, 1.5].includes(n)) return; settings.speed = n; break; }
+    case 'boost': { const n = Math.round(+value / 10) * 10; if (!(n >= 100 && n <= 200)) return; settings.boost = n; break; }
     case 'outputDevice': if (typeof value !== 'string' || value.length > 200) return; settings.outputDevice = value; break;
     case 'dailyGoal': { const n = Math.round(+value); if (!(n >= 5 && n <= 600)) return; settings.dailyGoal = n; goalToday = null; break; }
     case 'discord': settings.discord = bool(value); applyDiscordSettings(); updateDiscord(); break;
@@ -531,13 +566,17 @@ ipcMain.on('ytmd-window', (e, action) => {
 });
 ipcMain.on('ytmd-fullscreen', (e, on) => { if (fromMain(e)) win.setFullScreen(!!on); });
 ipcMain.on('ytmd-np', (e, data) => { if (fromMain(e)) onNowPlaying(data); });
+ipcMain.handle('ytmd-translate', (e, lines) => {
+  if (!fromMain(e) || !Array.isArray(lines) || !lines.length || lines.length > 400) return null;
+  return translateLines(lines.map((l) => String(l || '').slice(0, 300)));
+});
 ipcMain.handle('ytmd-lyrics', (e, q) => (fromMain(e) && q ? findLyrics(q) : null));
 ipcMain.handle('ytmd-share', (e, d) => {
   if (!fromMain(e) || !d || !/^[\w-]{6,20}$/.test(d.videoId || '')) return false;
   clipboard.writeText(`https://music.youtube.com/watch?v=${d.videoId}`);
   return true;
 });
-const PAGE_KEYS = ['crossfade', 'speed', 'outputDevice'];
+const PAGE_KEYS = ['crossfade', 'speed', 'outputDevice', 'boost'];
 ipcMain.on('ytmd-page-set', (e, k, v) => { if (fromMain(e) && PAGE_KEYS.includes(k)) setSetting(k, v); });
 ipcMain.handle('ytmd-recent', (e) => {
   if (!fromMain(e)) return [];
