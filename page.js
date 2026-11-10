@@ -57,7 +57,8 @@
     copy: () => svgIcon('0 0 24 24', ['M9 9h11v11H9z', 'M5 15H4V4h11v1'], { size: 16, width: 1.9 }),
     save: () => svgIcon('0 0 24 24', ['M12 4v11', 'M7 10l5 5 5-5', 'M5 20h14'], { size: 16, width: 1.9 }),
     link: () => svgIcon('0 0 24 24', ['M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1', 'M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1'], { size: 16, width: 1.9 }),
-    playSm: () => svgIcon('0 0 24 24', 'M8 5v14l11-7z', { size: 18, stroke: false })
+    playSm: () => svgIcon('0 0 24 24', 'M8 5v14l11-7z', { size: 18, stroke: false }),
+    translate: () => svgIcon('0 0 24 24', ['M4 5h9', 'M8.5 3v2', 'M11 5c-1 4-3.5 7-7 9', 'M6 9c1.2 2 3 3.6 5 4.5', 'M13 21l4-9 4 9', 'M14.5 18h5'], { size: 15, width: 1.8 })
   };
   const fmt = (s) => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 
@@ -168,7 +169,10 @@
   const panel = el('div', { id: 'ytmd-lyrics' }, [
     el('div', { class: 'ytmd-ly-head' }, [
       el('div', {}, [el('div', { class: 'ytmd-ly-label', text: 'Şarkı sözleri' }), panelTitle]),
-      el('button', { class: 'ytmd-ly-close', title: 'Kapat', onclick: () => setLyrics(false) }, [ICON.close()])
+      el('div', { class: 'ytmd-ly-tools' }, [
+        el('button', { class: 'ytmd-ly-trbtn', title: 'Türkçe çeviriyi göster / gizle', onclick: () => setTranslate(!lyTr) }, [ICON.translate(), el('span', { text: 'Çeviri' })]),
+        el('button', { class: 'ytmd-ly-close', title: 'Kapat', onclick: () => setLyrics(false) }, [ICON.close()])
+      ])
     ]),
     panelBody
   ]);
@@ -210,14 +214,41 @@
     if (res && res.synced) { lines = parseLRC(res.synced).filter((l) => l.text); synced = lines.length > 0; }
     else if (res && res.plain) { lines = res.plain.split(/\r?\n/).map((text) => ({ t: -1, text })); synced = false; }
     else { message('Bu şarkı için söz bulunamadı.'); return; }
-    activeIdx = -1;
-    renderAll(() => lines.map((l) => el('div', {
-      class: 'ytmd-ly-line' + (synced ? '' : ' plain'),
-      text: l.text || ' ',
-      onclick: () => { if (synced) { ctl.seek(l.t); userScrollAt = 0; } }
-    })));
+    trLines = null; trFor = '';
+    renderLines();
     bodies.forEach((b) => { b.scrollTop = 0; });
+    if (lyTr) translateLyrics();
   }
+  // ---- Türkçe çeviri ----
+  let lyTr = false, trLines = null, trFor = '';
+  try { lyTr = localStorage.getItem('ytmd-lyrics-tr') === '1'; } catch (e) {}
+  function renderLines() {
+    activeIdx = -1;
+    renderAll(() => lines.map((l, i) => el('div', {
+      class: 'ytmd-ly-line' + (synced ? '' : ' plain'),
+      onclick: () => { if (synced) { ctl.seek(l.t); userScrollAt = 0; } }
+    }, [document.createTextNode(l.text || '\u00a0'),
+        lyTr && trLines && trLines[i] && trLines[i] !== l.text ? el('div', { class: 'ytmd-ly-tr', text: trLines[i] }) : null])));
+  }
+  async function translateLyrics() {
+    const key = lyricsKey;
+    if (!lines.length || trFor === key) { renderLines(); return; }
+    trFor = key;
+    let res = null;
+    try { res = api.translate ? await api.translate(lines.map((l) => l.text || '')) : null; } catch (e) {}
+    if (key !== lyricsKey) return;
+    if (!res || !Array.isArray(res.lines)) { trFor = ''; toast('Çeviri yapılamadı (internet?)'); return; }
+    if (res.src === 'tr') { toast('Bu şarkının sözleri zaten Türkçe'); trLines = null; return; }
+    trLines = res.lines;
+    renderLines();
+  }
+  function setTranslate(on) {
+    lyTr = on;
+    try { localStorage.setItem('ytmd-lyrics-tr', on ? '1' : '0'); } catch (e) {}
+    root.classList.toggle('ytmd-tr-on', on);
+    if (on) translateLyrics(); else renderLines();
+  }
+  if (lyTr) root.classList.add('ytmd-tr-on');
   setInterval(() => {
     if ((!lyricsOpen && !fullOpen) || !synced || document.hidden) return;
     const v = video(); if (!v) return;
@@ -282,6 +313,7 @@
   const full = el('div', { id: 'ytmd-full' }, [
     fBg1, fBg2, el('div', { class: 'ytmd-f-shade' }),
     el('button', { class: 'ytmd-f-exit', title: 'Tam ekrandan çık (Esc)', onclick: () => setFull(false) }, [ICON.close(14)]),
+    el('button', { class: 'ytmd-f-tr ytmd-ly-trbtn', title: 'Türkçe çeviriyi göster / gizle', onclick: () => setTranslate(!lyTr) }, [ICON.translate(), el('span', { text: 'Çeviri' })]),
     el('div', { class: 'ytmd-f-main' }, [
       el('div', { class: 'ytmd-f-left' }, [
         fCover,
@@ -334,8 +366,8 @@
   // ---------------- Ekolayzer + ses eşitleme (Web Audio) ----------------
   const EQ_FREQS = [60, 230, 910, 3600, 14000];
   const eq = { ctx: null, src: null, video: null, filters: [], comp: null, makeup: null, fade: null, settings: { enabled: false, bands: [0, 0, 0, 0, 0], normalize: false } };
-  const audio = { crossfade: 0, speed: 1, device: '' };
-  function eqNeeded() { return eq.settings.enabled || eq.settings.normalize || audio.crossfade > 0; }
+  const audio = { crossfade: 0, speed: 1, device: '', boost: 1 };
+  function eqNeeded() { return eq.settings.enabled || eq.settings.normalize || audio.crossfade > 0 || audio.boost > 1; }
   function eqEnsure() {
     const v = video();
     if (!v) return false;
@@ -354,7 +386,11 @@
       eq.makeup = eq.ctx.createGain();
       eq.comp.connect(eq.makeup);
       eq.fade = eq.ctx.createGain();
-      eq.fade.connect(eq.ctx.destination);
+      // Ses yükseltme + taşmayı (cızırtıyı) önleyen sınırlayıcı
+      eq.boost = eq.ctx.createGain();
+      eq.limit = eq.ctx.createDynamicsCompressor();
+      eq.limit.knee.value = 0; eq.limit.ratio.value = 20; eq.limit.attack.value = 0.002; eq.limit.release.value = 0.12; eq.limit.threshold.value = 0;
+      eq.fade.connect(eq.boost); eq.boost.connect(eq.limit); eq.limit.connect(eq.ctx.destination);
       applySink();
       const resume = () => { if (eq.ctx.state === 'suspended') eq.ctx.resume().catch(() => {}); };
       document.addEventListener('play', resume, true);
@@ -377,6 +413,8 @@
     try { eq.makeup.disconnect(); } catch (e) {}
     if (s.normalize) { last.connect(eq.comp); eq.makeup.gain.value = 1.35; eq.makeup.connect(eq.fade); }
     else last.connect(eq.fade);
+    eq.boost.gain.setTargetAtTime(audio.boost, eq.ctx.currentTime, 0.08);
+    eq.limit.threshold.value = audio.boost > 1 ? -1 : 0;
   }
   // Ses çıkış cihazı (boş = sistem varsayılanı)
   function applySink() {
@@ -580,17 +618,24 @@
   const cfRange = el('input', { type: 'range', min: '0', max: '12', step: '1', class: 'ytmd-ap-range' });
   cfRange.addEventListener('input', () => { cfVal.textContent = +cfRange.value ? cfRange.value + ' sn' : 'Kapalı'; });
   cfRange.addEventListener('change', () => { api.pageSet && api.pageSet('crossfade', +cfRange.value); });
+  const boostVal = el('span', { class: 'ytmd-ap-val' });
+  const boostRange = el('input', { type: 'range', min: '100', max: '200', step: '10', class: 'ytmd-ap-range' });
+  boostRange.addEventListener('input', () => { boostVal.textContent = '%' + boostRange.value; });
+  boostRange.addEventListener('change', () => { api.pageSet && api.pageSet('boost', +boostRange.value); });
   const devSel = el('select', { class: 'ytmd-ap-select' });
   devSel.addEventListener('change', () => { api.pageSet && api.pageSet('outputDevice', devSel.value); });
   const audioPop = el('div', { id: 'ytmd-audio' }, [
     el('div', { class: 'ytmd-ap-h', text: 'Oynatma hızı' }), speedChips,
     el('div', { class: 'ytmd-ap-h' }, [document.createTextNode('Yumuşak geçiş '), cfVal]), cfRange,
     el('div', { class: 'ytmd-ap-hint', text: 'Şarkı biterken ses kısılır, yenisi yavaşça açılır' }),
+    el('div', { class: 'ytmd-ap-h' }, [document.createTextNode('Ses yükseltme '), boostVal]), boostRange,
+    el('div', { class: 'ytmd-ap-hint', text: 'Sessiz kayıtlar için sesi %200\'e kadar açar' }),
     el('div', { class: 'ytmd-ap-h', text: 'Ses çıkışı' }), devSel
   ]);
   root.appendChild(audioPop);
   function renderAudioPop() {
     speedChips.querySelectorAll('button').forEach((b) => b.classList.toggle('on', Math.abs(+b.getAttribute('data-v') - audio.speed) < 0.01));
+    boostRange.value = String(Math.round(audio.boost * 100)); boostVal.textContent = '%' + Math.round(audio.boost * 100);
     cfRange.value = String(audio.crossfade); cfVal.textContent = audio.crossfade ? audio.crossfade + ' sn' : 'Kapalı';
     if (devSel.value !== audio.device) devSel.value = audio.device;
   }
@@ -855,6 +900,7 @@
     root.classList.toggle('ytmd-anim', s.transitions !== false);
     if ('speed' in s) audio.speed = Math.max(0.5, Math.min(2, +s.speed || 1));
     if ('outputDevice' in s) { audio.device = String(s.outputDevice || ''); applySink(); }
+    if ('boost' in s) audio.boost = Math.max(1, Math.min(2, (+s.boost || 100) / 100));
     if ('crossfade' in s) {
       audio.crossfade = Math.max(0, Math.min(12, +s.crossfade || 0));
       if (!audio.crossfade && eq.fade) { cfArmed = false; eq.fade.gain.cancelScheduledValues(eq.ctx.currentTime); eq.fade.gain.setValueAtTime(1, eq.ctx.currentTime); }
