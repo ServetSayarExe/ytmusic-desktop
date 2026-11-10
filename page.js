@@ -50,7 +50,14 @@
     prev: () => svgIcon('0 0 24 24', ['M6 5h2v14H6z', 'M20 5v14L9 12z'], { size: 26, stroke: false }),
     next: () => svgIcon('0 0 24 24', ['M16 5h2v14h-2z', 'M4 5v14l11-7z'], { size: 26, stroke: false }),
     play: () => svgIcon('0 0 24 24', 'M8 5v14l11-7z', { size: 30, stroke: false }),
-    pause: () => svgIcon('0 0 24 24', ['M7 5h3.5v14H7z', 'M13.5 5H17v14h-3.5z'], { size: 30, stroke: false })
+    pause: () => svgIcon('0 0 24 24', ['M7 5h3.5v14H7z', 'M13.5 5H17v14h-3.5z'], { size: 30, stroke: false }),
+    speaker: () => svgIcon('0 0 24 24', ['M4 9v6h4l5 4V5L8 9z', 'M16.5 8.5a5 5 0 0 1 0 7', 'M19 6a8.5 8.5 0 0 1 0 12'], { size: 16, width: 1.9 }),
+    queue: () => svgIcon('0 0 24 24', ['M4 6h12', 'M4 11h12', 'M4 16h7', 'M15 15.5v5l4.5-2.5z'], { size: 16, width: 1.9 }),
+    image: () => svgIcon('0 0 24 24', ['M4 5h16v14H4z', 'M4 16l5-5 4 4 2-2 5 5', 'M15.5 9.5h.01'], { size: 16, width: 1.9 }),
+    copy: () => svgIcon('0 0 24 24', ['M9 9h11v11H9z', 'M5 15H4V4h11v1'], { size: 16, width: 1.9 }),
+    save: () => svgIcon('0 0 24 24', ['M12 4v11', 'M7 10l5 5 5-5', 'M5 20h14'], { size: 16, width: 1.9 }),
+    link: () => svgIcon('0 0 24 24', ['M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1', 'M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1'], { size: 16, width: 1.9 }),
+    playSm: () => svgIcon('0 0 24 24', 'M8 5v14l11-7z', { size: 18, stroke: false })
   };
   const fmt = (s) => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 
@@ -108,7 +115,8 @@
       artwork: art ? art.src : '', videoId,
       paused: v ? v.paused : true,
       currentTime: v ? v.currentTime || 0 : 0,
-      duration: v && isFinite(v.duration) ? v.duration : 0
+      duration: v && isFinite(v.duration) ? v.duration : 0,
+      rate: v ? v.playbackRate || 1 : 1
     };
   }
 
@@ -122,7 +130,7 @@
     const track = np.videoId || np.title + '|' + np.artist;
     const key = track + '|' + np.paused + '|' + Math.round(np.duration || 0);
     const now = Date.now();
-    const expected = lastSentPos + (np.paused ? 0 : (now - lastSent) / 1000);
+    const expected = lastSentPos + (np.paused ? 0 : (now - lastSent) / 1000 * (np.rate || 1));
     const seeked = Math.abs(expected - np.currentTime) > 2.5;
     if (key !== lastKey || seeked || now - lastSent > 30000) {
       lastKey = key; lastSent = now; lastSentPos = np.currentTime;
@@ -169,6 +177,7 @@
 
   function setLyrics(open) {
     lyricsOpen = open;
+    if (open && typeof setQueue === 'function') setQueue(false);
     try { localStorage.setItem('ytmd-lyrics', open ? '1' : '0'); } catch (e) {}
     root.classList.toggle('ytmd-lyrics-open', open);
     if (open && current) { lyricsKey = ''; loadLyricsFor(current); }
@@ -235,8 +244,10 @@
   root.appendChild(el('div', { id: 'ytmd-actions' }, [
     actBtn('Ayarlar', ICON.gear(), '', () => api.openSettings && api.openSettings()),
     actBtn('Mini oynatıcı', ICON.mini(), '', () => api.mini && api.mini()),
-    actBtn('Şarkıyı paylaş (bağlantıyı kopyala)', ICON.share(), '', share),
+    actBtn('Ses: hız, yumuşak geçiş, çıkış cihazı', ICON.speaker(), '', () => toggleAudioPop(), 'ytmd-audio-btn'),
+    actBtn('Şarkı kartı paylaş', ICON.share(), '', () => openCard()),
     actBtn('Tam ekran', ICON.full(), '', () => setFull(true)),
+    actBtn('Sıradakiler', ICON.queue(), '', () => setQueue(!queueOpen), 'ytmd-queue-btn'),
     actBtn('Şarkı sözleri', ICON.lyrics(), 'Sözler', () => setLyrics(!lyricsOpen), 'ytmd-lyrics-btn')
   ]));
 
@@ -245,6 +256,7 @@
     if (!np || !np.videoId) return toast('Önce bir şarkı çal');
     const ok = api.share ? await api.share(np) : false;
     toast(ok ? 'Bağlantı kopyalandı — Discord\'a yapıştırabilirsin' : 'Kopyalanamadı');
+    return ok;
   }
   window.__ytmdShare = share;
 
@@ -321,8 +333,9 @@
 
   // ---------------- Ekolayzer + ses eşitleme (Web Audio) ----------------
   const EQ_FREQS = [60, 230, 910, 3600, 14000];
-  const eq = { ctx: null, src: null, video: null, filters: [], comp: null, makeup: null, settings: { enabled: false, bands: [0, 0, 0, 0, 0], normalize: false } };
-  function eqNeeded() { return eq.settings.enabled || eq.settings.normalize; }
+  const eq = { ctx: null, src: null, video: null, filters: [], comp: null, makeup: null, fade: null, settings: { enabled: false, bands: [0, 0, 0, 0, 0], normalize: false } };
+  const audio = { crossfade: 0, speed: 1, device: '' };
+  function eqNeeded() { return eq.settings.enabled || eq.settings.normalize || audio.crossfade > 0; }
   function eqEnsure() {
     const v = video();
     if (!v) return false;
@@ -340,6 +353,9 @@
       eq.comp.attack.value = 0.005; eq.comp.release.value = 0.3;
       eq.makeup = eq.ctx.createGain();
       eq.comp.connect(eq.makeup);
+      eq.fade = eq.ctx.createGain();
+      eq.fade.connect(eq.ctx.destination);
+      applySink();
       const resume = () => { if (eq.ctx.state === 'suspended') eq.ctx.resume().catch(() => {}); };
       document.addEventListener('play', resume, true);
       document.addEventListener('click', resume, true);
@@ -359,9 +375,52 @@
     const last = eq.filters[eq.filters.length - 1];
     try { last.disconnect(); } catch (e) {}
     try { eq.makeup.disconnect(); } catch (e) {}
-    if (s.normalize) { last.connect(eq.comp); eq.makeup.gain.value = 1.35; eq.makeup.connect(eq.ctx.destination); }
-    else last.connect(eq.ctx.destination);
+    if (s.normalize) { last.connect(eq.comp); eq.makeup.gain.value = 1.35; eq.makeup.connect(eq.fade); }
+    else last.connect(eq.fade);
   }
+  // Ses çıkış cihazı (boş = sistem varsayılanı)
+  function applySink() {
+    const id = audio.device || '';
+    const v = video();
+    try { if (v && v.setSinkId && v.sinkId !== id) v.setSinkId(id).catch(() => {}); } catch (e) {}
+    try { if (eq.ctx && eq.ctx.setSinkId && (eq.ctx.sinkId || '') !== id) eq.ctx.setSinkId(id).catch(() => toast('Ses cihazına geçilemedi')); } catch (e) {}
+  }
+  window.__ytmdDevices = async () => {
+    try {
+      const list = await navigator.mediaDevices.enumerateDevices();
+      let n = 0;
+      return list.filter((d) => d.kind === 'audiooutput' && d.deviceId !== 'default' && d.deviceId !== 'communications')
+        .map((d) => ({ id: d.deviceId, label: d.label || 'Ses cihazı ' + (++n) }));
+    } catch (e) { return []; }
+  };
+  // Oynatma hızı: YouTube her şarkıda 1x'e döndürebilir, o yüzden sürekli koru
+  setInterval(() => {
+    const v = video(); if (!v) return;
+    if (Math.abs((v.playbackRate || 1) - audio.speed) > 0.01) { try { v.playbackRate = audio.speed; } catch (e) {} }
+    if (audio.device && v.sinkId !== audio.device && !eq.ctx) applySink();
+  }, 1000);
+  // Yumuşak geçiş: şarkı sonunda sesi kıs, yeni şarkıda yavaşça aç
+  let cfArmed = false;
+  setInterval(() => {
+    const cf = audio.crossfade;
+    if (!cf || !eq.fade || !eq.ctx) return;
+    const v = video(); if (!v || !isFinite(v.duration) || v.duration <= 0) return;
+    const rate = v.playbackRate || 1;
+    const rem = (v.duration - v.currentTime) / rate;
+    const g = eq.fade.gain, now = eq.ctx.currentTime;
+    if (cfArmed) {
+      if (v.currentTime < 4 && rem > cf) {             // yeni şarkı başladı
+        cfArmed = false;
+        g.cancelScheduledValues(now); g.setValueAtTime(Math.min(g.value, 0.05), now); g.linearRampToValueAtTime(1, now + cf);
+      } else if (rem > cf + 1) {                       // geri sarıldı
+        cfArmed = false; g.cancelScheduledValues(now); g.setTargetAtTime(1, now, 0.15);
+      } else if (!v.paused) g.setTargetAtTime(Math.max(0, rem / cf), now, 0.08);
+      return;
+    }
+    if (!v.paused && v.duration > cf * 2 + 8 && rem <= cf && rem > 0) {
+      cfArmed = true; g.cancelScheduledValues(now); g.setTargetAtTime(Math.max(0, rem / cf), now, 0.08);
+    }
+  }, 120);
   // YouTube video öğesini değiştirirse yeniden bağlan
   setInterval(() => { if (eq.ctx && video() && video() !== eq.video) eqApply(); }, 3000);
 
@@ -511,6 +570,262 @@
     window.addEventListener('yt-navigate-finish', () => LIB.render());
   }
 
+  // ---------------- Ses açılır paneli (hız, yumuşak geçiş, çıkış cihazı) ----------------
+  const SPEEDS = [0.75, 0.9, 1, 1.1, 1.25, 1.5];
+  const speedChips = el('div', { class: 'ytmd-ap-chips' }, SPEEDS.map((x) => el('button', {
+    class: 'ytmd-ap-chip', 'data-v': String(x), text: String(x).replace('.', ',') + 'x',
+    onclick: () => { api.pageSet && api.pageSet('speed', x); audio.speed = x; renderAudioPop(); }
+  })));
+  const cfVal = el('span', { class: 'ytmd-ap-val' });
+  const cfRange = el('input', { type: 'range', min: '0', max: '12', step: '1', class: 'ytmd-ap-range' });
+  cfRange.addEventListener('input', () => { cfVal.textContent = +cfRange.value ? cfRange.value + ' sn' : 'Kapalı'; });
+  cfRange.addEventListener('change', () => { api.pageSet && api.pageSet('crossfade', +cfRange.value); });
+  const devSel = el('select', { class: 'ytmd-ap-select' });
+  devSel.addEventListener('change', () => { api.pageSet && api.pageSet('outputDevice', devSel.value); });
+  const audioPop = el('div', { id: 'ytmd-audio' }, [
+    el('div', { class: 'ytmd-ap-h', text: 'Oynatma hızı' }), speedChips,
+    el('div', { class: 'ytmd-ap-h' }, [document.createTextNode('Yumuşak geçiş '), cfVal]), cfRange,
+    el('div', { class: 'ytmd-ap-hint', text: 'Şarkı biterken ses kısılır, yenisi yavaşça açılır' }),
+    el('div', { class: 'ytmd-ap-h', text: 'Ses çıkışı' }), devSel
+  ]);
+  root.appendChild(audioPop);
+  function renderAudioPop() {
+    speedChips.querySelectorAll('button').forEach((b) => b.classList.toggle('on', Math.abs(+b.getAttribute('data-v') - audio.speed) < 0.01));
+    cfRange.value = String(audio.crossfade); cfVal.textContent = audio.crossfade ? audio.crossfade + ' sn' : 'Kapalı';
+    if (devSel.value !== audio.device) devSel.value = audio.device;
+  }
+  async function fillDevices() {
+    const list = await window.__ytmdDevices();
+    devSel.replaceChildren(el('option', { value: '', text: 'Sistem varsayılanı' }), ...list.map((d) => el('option', { value: d.id, text: d.label })));
+    if (audio.device && !list.some((d) => d.id === audio.device)) devSel.appendChild(el('option', { value: audio.device, text: 'Kayıtlı cihaz (bağlı değil)' }));
+    devSel.value = audio.device;
+  }
+  function toggleAudioPop(open) {
+    const on = open === undefined ? !root.classList.contains('ytmd-audio-open') : open;
+    root.classList.toggle('ytmd-audio-open', on);
+    if (on) { renderAudioPop(); fillDevices(); }
+  }
+  document.addEventListener('pointerdown', (e) => {
+    if (root.classList.contains('ytmd-audio-open') && !audioPop.contains(e.target) && !e.target.closest('#ytmd-audio-btn')) toggleAudioPop(false);
+  }, true);
+
+  // ---------------- Sıradakiler paneli ----------------
+  let queueOpen = false;
+  const qBody = el('div', { class: 'ytmd-q-body' });
+  const qPanel = el('div', { id: 'ytmd-queue' }, [
+    el('div', { class: 'ytmd-ly-head' }, [
+      el('div', {}, [el('div', { class: 'ytmd-ly-label', text: 'Sıradakiler' }), el('div', { class: 'ytmd-ly-track', text: 'Tıkla, o şarkıya geç' })]),
+      el('button', { class: 'ytmd-ly-close', title: 'Kapat', onclick: () => setQueue(false) }, [ICON.close()])
+    ]),
+    qBody
+  ]);
+  root.appendChild(qPanel);
+  const rtxt = (o) => (o && o.runs ? o.runs.map((r) => r.text).join('') : (o && o.simpleText) || '');
+  const qRenderer = (it) => it && (it.playlistPanelVideoRenderer ||
+    (it.playlistPanelVideoWrapperRenderer && it.playlistPanelVideoWrapperRenderer.primaryRenderer && it.playlistPanelVideoWrapperRenderer.primaryRenderer.playlistPanelVideoRenderer));
+  function queueState() {
+    try { const q = document.querySelector('ytmusic-player-queue'); return q && q.getState ? q.getState().queue : null; } catch (e) { return null; }
+  }
+  function qItem(it) {
+    const r = qRenderer(it); if (!r) return null;
+    const by = (r.shortBylineText && rtxt(r.shortBylineText)) || rtxt(r.longBylineText).split(' • ')[0];
+    const th = r.thumbnail && r.thumbnail.thumbnails; const art = th && th.length ? th[0].url : '';
+    return { id: r.videoId, title: rtxt(r.title), artist: by, art, len: rtxt(r.lengthText), ep: r.navigationEndpoint };
+  }
+  function qPlay(index, x, automix) {
+    if (!automix) {
+      const dom = document.querySelectorAll('ytmusic-player-queue #contents > ytmusic-player-queue-item, ytmusic-player-queue #contents > ytmusic-playlist-panel-video-wrapper-renderer');
+      const node = dom[index];
+      const btn = node && node.querySelector('ytmusic-play-button-renderer');
+      if (btn) { btn.click(); return; }
+    }
+    if (x.ep) document.querySelector('ytmusic-app').dispatchEvent(new CustomEvent('yt-navigate', { bubbles: true, composed: true, detail: { endpoint: x.ep } }));
+  }
+  let qSig = '';
+  function qRow(x, onclick, cls) {
+    const cover = x.art ? el('img', { class: 'ytmd-q-cover', src: x.art, alt: '', loading: 'lazy' }) : el('div', { class: 'ytmd-q-cover' });
+    return el('div', { class: 'ytmd-q-row ' + (cls || ''), title: x.title, onclick }, [
+      el('div', { class: 'ytmd-q-art' }, [cover, el('div', { class: 'ytmd-q-hover' }, [ICON.playSm()])]),
+      el('div', { class: 'ytmd-q-meta' }, [el('div', { class: 'ytmd-q-title', text: x.title }), el('div', { class: 'ytmd-q-sub', text: x.artist })]),
+      el('div', { class: 'ytmd-q-len', text: x.len || '' })
+    ]);
+  }
+  function renderQueue(force) {
+    const q = queueState();
+    const items = (q && q.items) || [], sel = q ? q.selectedItemIndex || 0 : 0, auto = (q && q.automixItems) || [];
+    const sig = sel + '|' + items.length + '|' + auto.length + '|' + (items[sel] && (qRenderer(items[sel]) || {}).videoId) + '|' + (items[items.length - 1] && (qRenderer(items[items.length - 1]) || {}).videoId);
+    if (!force && sig === qSig) return;
+    qSig = sig;
+    const kids = [];
+    const cur = items[sel] && qItem(items[sel]);
+    if (cur) { kids.push(el('div', { class: 'ytmd-q-h', text: 'Şimdi çalıyor' })); kids.push(qRow(cur, () => {}, 'now')); }
+    const next = [];
+    for (let i = sel + 1; i < items.length && next.length < 80; i++) { const x = qItem(items[i]); if (x) next.push([i, x]); }
+    if (next.length) {
+      kids.push(el('div', { class: 'ytmd-q-h', text: 'Sırada' }));
+      next.forEach(([i, x]) => kids.push(qRow(x, () => { qPlay(i, x, false); setTimeout(() => renderQueue(true), 800); })));
+    }
+    const am = auto.map(qItem).filter(Boolean).slice(0, 30);
+    if (am.length) {
+      kids.push(el('div', { class: 'ytmd-q-h', text: 'Sonra otomatik çalacak' }));
+      am.forEach((x) => kids.push(qRow(x, () => { qPlay(-1, x, true); setTimeout(() => renderQueue(true), 800); }, 'auto')));
+    }
+    if (!kids.length) kids.push(el('div', { class: 'ytmd-ly-msg', text: 'Sırada şarkı yok. Bir şarkı, albüm ya da liste çal.' }));
+    qBody.replaceChildren(...kids);
+  }
+  function setQueue(open) {
+    queueOpen = open;
+    root.classList.toggle('ytmd-queue-open', open);
+    if (open) { if (lyricsOpen) setLyrics(false); renderQueue(true); qBody.scrollTop = 0; }
+  }
+  setInterval(() => { if (queueOpen && !document.hidden) renderQueue(false); }, 1500);
+  window.__ytmdQueue = (o) => setQueue(o === undefined ? !queueOpen : !!o);
+
+  // ---------------- Şarkı kartı (görsel olarak paylaş) ----------------
+  const cardImg = el('img', { class: 'ytmd-card-img', alt: '' });
+  const cardMsg = el('div', { class: 'ytmd-card-msg', text: 'Hazırlanıyor…' });
+  let cardData = '', cardName = 'sarki';
+  const cardBtn = (label, icon, fn, cls) => el('button', { class: 'ytmd-card-btn ' + (cls || ''), onclick: fn }, [icon, el('span', { text: label })]);
+  const cardModal = el('div', { id: 'ytmd-card', onclick: (e) => { if (e.target === cardModal) closeCard(); } }, [
+    el('div', { class: 'ytmd-card-box' }, [
+      el('button', { class: 'ytmd-ly-close ytmd-card-x', title: 'Kapat', onclick: () => closeCard() }, [ICON.close()]),
+      el('div', { class: 'ytmd-card-pv' }, [cardImg, cardMsg]),
+      el('div', { class: 'ytmd-card-side' }, [
+        el('div', { class: 'ytmd-ly-label', text: 'Şarkıyı paylaş' }),
+        el('div', { class: 'ytmd-card-h', text: 'Kapaklı kart hazır' }),
+        el('div', { class: 'ytmd-card-p', text: 'Görseli kopyalayıp Discord, WhatsApp ya da Instagram\'a yapıştırabilirsin.' }),
+        cardBtn('Görseli kopyala', ICON.copy(), async () => { if (cardData && api.copyImage && await api.copyImage(cardData)) toast('Kart panoya kopyalandı'); }, 'primary'),
+        cardBtn('Görsel olarak kaydet', ICON.save(), async () => { if (cardData && api.saveImage) { const r = await api.saveImage(cardData, cardName); if (r) toast('Kaydedildi'); } }),
+        cardBtn('Bağlantıyı kopyala', ICON.link(), () => share())
+      ])
+    ])
+  ]);
+  root.appendChild(cardModal);
+  function closeCard() { root.classList.remove('ytmd-card-open'); }
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && root.classList.contains('ytmd-card-open')) { closeCard(); e.stopPropagation(); } }, true);
+  const loadImg = (src) => new Promise((res) => { if (!src) return res(null); const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
+  function wrapLines(ctx, text, maxW, maxLines) {
+    const words = String(text).split(/\s+/); const out = []; let line = '';
+    for (const w of words) {
+      const t = line ? line + ' ' + w : w;
+      if (ctx.measureText(t).width <= maxW || !line) line = t; else { out.push(line); line = w; }
+    }
+    if (line) out.push(line);
+    if (out.length > maxLines) { out.length = maxLines; let l = out[maxLines - 1]; while (l && ctx.measureText(l + '…').width > maxW) l = l.slice(0, -1); out[maxLines - 1] = l + '…'; }
+    return out;
+  }
+  function rrect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+  async function renderCard(np) {
+    const W = 1080, H = 1350;
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const ctx = c.getContext('2d');
+    const accent = getComputedStyle(root).getPropertyValue('--ytmd-accent').trim() || '#ff4d6d';
+    let data = null;
+    try { data = api.coverData ? await api.coverData(np.artwork.replace(/=w\d+-h\d+/, '=w900-h900')) : null; } catch (e) {}
+    const img = await loadImg(data);
+    ctx.fillStyle = '#0b0b10'; ctx.fillRect(0, 0, W, H);
+    if (img) {
+      ctx.save(); ctx.filter = 'blur(70px) saturate(1.7) brightness(.6)';
+      ctx.drawImage(img, -200, -200, W + 400, H + 400); ctx.restore();
+    } else {
+      const g = ctx.createLinearGradient(0, 0, W, H); g.addColorStop(0, accent); g.addColorStop(1, '#14141c'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    }
+    const sh = ctx.createLinearGradient(0, H * 0.45, 0, H); sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,0,.65)');
+    ctx.fillStyle = sh; ctx.fillRect(0, 0, W, H);
+    const S = 760, X = (W - S) / 2, Y = 130;
+    ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 80; ctx.shadowOffsetY = 30;
+    rrect(ctx, X, Y, S, S, 36); ctx.fillStyle = '#222'; ctx.fill(); ctx.restore();
+    if (img) { ctx.save(); rrect(ctx, X, Y, S, S, 36); ctx.clip(); const m = Math.min(img.width, img.height); ctx.drawImage(img, (img.width - m) / 2, (img.height - m) / 2, m, m, X, Y, S, S); ctx.restore(); }
+    const font = '"YouTube Sans", "Segoe UI Variable Display", "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = '#fff'; ctx.textBaseline = 'top';
+    ctx.font = '800 66px ' + font;
+    let y = Y + S + 64;
+    for (const l of wrapLines(ctx, np.title, S, 2)) { ctx.fillText(l, X, y); y += 78; }
+    ctx.font = '500 40px ' + font; ctx.fillStyle = 'rgba(255,255,255,.75)';
+    ctx.fillText(wrapLines(ctx, np.artist || '', S, 1)[0] || '', X, y + 6);
+    // alt şerit
+    const by = H - 120;
+    ctx.fillStyle = accent; rrect(ctx, X, by, 64, 64, 32); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(X + 25, by + 18); ctx.lineTo(X + 25, by + 46); ctx.lineTo(X + 48, by + 32); ctx.closePath(); ctx.fill();
+    ctx.font = '700 32px ' + font; ctx.fillStyle = '#fff'; ctx.fillText('YouTube Music\'te dinle', X + 86, by + 2);
+    ctx.font = '400 26px ' + font; ctx.fillStyle = 'rgba(255,255,255,.6)';
+    ctx.fillText('music.youtube.com/watch?v=' + (np.videoId || ''), X + 86, by + 40);
+    return c.toDataURL('image/png');
+  }
+  async function openCard() {
+    const np = current || readNowPlaying();
+    if (!np || !np.title) return toast('Önce bir şarkı çal');
+    toggleAudioPop(false);
+    cardData = ''; cardImg.removeAttribute('src'); cardMsg.style.display = '';
+    cardName = (np.artist ? np.artist + ' - ' : '') + np.title;
+    root.classList.add('ytmd-card-open');
+    try { await document.fonts.ready; } catch (e) {}
+    try { cardData = await renderCard(np); cardImg.src = cardData; cardMsg.style.display = 'none'; }
+    catch (e) { cardMsg.textContent = 'Kart hazırlanamadı'; }
+  }
+  window.__ytmdCard = openCard;
+
+  // ---------------- Ana sayfa: "Sana özel" bölümü ----------------
+  const HOME = (() => {
+    let box = null, built = '', on = true;
+    const greet = () => { const h = new Date().getHours(); return h < 5 ? 'İyi geceler' : h < 12 ? 'Günaydın' : h < 18 ? 'İyi günler' : 'İyi akşamlar'; };
+    const nav = (ep) => document.querySelector('ytmusic-app').dispatchEvent(new CustomEvent('yt-navigate', { bubbles: true, composed: true, detail: { endpoint: ep } }));
+    function libItems() {
+      let d = {}; try { d = JSON.parse(localStorage.getItem('ytmd-lib') || '{}'); } catch (e) {}
+      const pl = ((d.playlists && d.playlists.items) || []), al = ((d.albums && d.albums.items) || []);
+      const liked = pl.find((x) => x.id === 'VLLM');
+      const rest = []; const a = pl.filter((x) => x.id !== 'VLLM'), b = al.slice();
+      while ((a.length || b.length) && rest.length < 7) { if (a.length) rest.push(a.shift()); if (b.length && rest.length < 7) rest.push(b.shift()); }
+      return [liked || { id: 'VLLM', title: 'Beğendiğim müzikler', thumb: '', ep: { browseEndpoint: { browseId: 'VLLM' } } }, ...rest].slice(0, 8);
+    }
+    async function build() {
+      const recent = api.recent ? (await api.recent().catch(() => [])) || [] : [];
+      const tiles = libItems();
+      const key = tiles.map((t) => t.id).join(',') + '|' + recent.map((r) => r.id).join(',') + '|' + greet();
+      if (box && key === built) return box;
+      built = key;
+      const tileEls = tiles.map((t) => el('div', { class: 'ytmd-h-tile', title: t.title, onclick: () => nav(t.ep) }, [
+        t.thumb ? el('img', { src: t.thumb.replace(/=w\d+-h\d+/, '=w120-h120'), alt: '', loading: 'lazy' })
+                : el('div', { class: 'ytmd-h-ph', text: t.id === 'VLLM' ? '♥' : (t.title[0] || '♪') }),
+        el('span', { text: t.title }),
+        el('div', { class: 'ytmd-h-play' }, [ICON.playSm()])
+      ]));
+      const kids = [el('div', { class: 'ytmd-h-greet', text: greet() }), el('div', { class: 'ytmd-h-grid' }, tileEls)];
+      if (recent.length) {
+        kids.push(el('div', { class: 'ytmd-h-title', text: 'Son çaldıkların' }));
+        kids.push(el('div', { class: 'ytmd-h-row' }, recent.map((r) => el('div', { class: 'ytmd-h-card', title: r.title, onclick: () => nav({ watchEndpoint: { videoId: r.id } }) }, [
+          el('div', { class: 'ytmd-h-cov' }, [
+            r.art ? el('img', { src: r.art.replace(/=w\d+-h\d+/, '=w320-h320'), alt: '', loading: 'lazy' }) : el('div', { class: 'ytmd-h-ph big', text: '♪' }),
+            el('div', { class: 'ytmd-h-play' }, [ICON.playSm()])
+          ]),
+          el('b', { text: r.title }), el('span', { text: r.artist })
+        ]))));
+      }
+      const nb = el('div', { id: 'ytmd-home' }, kids);
+      if (box && box.parentElement) box.replaceWith(nb);
+      box = nb;
+      return box;
+    }
+    let busy = false;
+    async function tick() {
+      const isHome = location.pathname === '/' || location.pathname === '/home' || (location.pathname === '/browse' && /FEmusic_home/.test(location.search));
+      root.classList.toggle('ytmd-home-page', isHome && on);
+      if (!isHome || !on || busy || document.hidden) return;
+      const sl = document.querySelector('ytmusic-browse-response ytmusic-section-list-renderer');
+      const contents = sl && sl.querySelector(':scope > #contents');
+      if (!contents) return;
+      busy = true;
+      try { const b = await build(); if (b.nextElementSibling !== contents || b.parentElement !== sl) sl.insertBefore(b, contents); } catch (e) {}
+      busy = false;
+    }
+    return { tick, set: (v) => { on = v; if (!on && box) box.remove(); built = on ? built : ''; tick(); }, refresh: () => { built = ''; tick(); } };
+  })();
+  if (THEME) {
+    setInterval(() => HOME.tick(), 1500);
+    window.addEventListener('yt-navigate-finish', () => setTimeout(() => HOME.tick(), 200));
+    trackListeners.push(() => setTimeout(() => HOME.refresh(), 40000));
+  }
+
   // ---------------- Güncelleme kartı ----------------
   const updTitle = el('div', { class: 'ytmd-upd-title' });
   const updNotes = el('div', { class: 'ytmd-upd-notes' });
@@ -538,8 +853,17 @@
     root.classList.remove('ytmd-mode-dark', 'ytmd-mode-amoled', 'ytmd-mode-cover');
     root.classList.add('ytmd-mode-' + (s.themeMode || 'dark'));
     root.classList.toggle('ytmd-anim', s.transitions !== false);
+    if ('speed' in s) audio.speed = Math.max(0.5, Math.min(2, +s.speed || 1));
+    if ('outputDevice' in s) { audio.device = String(s.outputDevice || ''); applySink(); }
+    if ('crossfade' in s) {
+      audio.crossfade = Math.max(0, Math.min(12, +s.crossfade || 0));
+      if (!audio.crossfade && eq.fade) { cfArmed = false; eq.fade.gain.cancelScheduledValues(eq.ctx.currentTime); eq.fade.gain.setValueAtTime(1, eq.ctx.currentTime); }
+    }
     if (s.eq) { eq.settings = { enabled: !!s.eq.enabled, bands: s.eq.bands || [0, 0, 0, 0, 0], normalize: !!s.normalize }; eqApply(); }
     else if ('normalize' in s) { eq.settings.normalize = !!s.normalize; eqApply(); }
+    else eqApply();
+    if ('homeHero' in s && THEME) HOME.set(s.homeHero !== false);
+    renderAudioPop();
   };
   window.__ytmdSleep = (mode) => {
     if (mode === 'fade') sleepFade();
