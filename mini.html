@@ -33,8 +33,14 @@
   .top { position: absolute; top: 6px; right: 6px; display: flex; gap: 2px; opacity: 0; transition: opacity .2s; z-index: 2; }
   .card:hover .top { opacity: 1; }
   .top button { width: 24px; height: 24px; background: rgba(0, 0, 0, 0.35); }
-  .bar { position: absolute; left: 12px; right: 12px; bottom: 7px; height: 3px; border-radius: 3px; background: rgba(255, 255, 255, 0.18); overflow: hidden; }
-  .fill { height: 100%; width: 0; background: var(--accent); border-radius: 3px; }
+  .seek { position: absolute; left: 12px; right: 12px; bottom: 2px; height: 14px; cursor: pointer; -webkit-app-region: no-drag; z-index: 3; }
+  .bar { position: absolute; left: 0; right: 0; top: 5px; height: 3px; border-radius: 3px; background: rgba(255, 255, 255, 0.18); transition: height .12s, top .12s; }
+  .fill { position: relative; height: 100%; width: 0; background: var(--accent); border-radius: 3px; }
+  .fill::after { content: ""; position: absolute; right: -6px; top: 50%; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.5); opacity: 0; transition: opacity .12s; }
+  .seek:hover .bar, .seek.drag .bar { height: 5px; top: 4px; }
+  .seek:hover .fill::after, .seek.drag .fill::after { opacity: 1; }
+  .tip { position: absolute; bottom: 16px; transform: translateX(-50%); font-size: 11px; padding: 2px 6px; border-radius: 6px; background: rgba(0,0,0,.75); opacity: 0; pointer-events: none; font-variant-numeric: tabular-nums; }
+  .seek:hover .tip, .seek.drag .tip { opacity: 1; }
   svg { display: block; }
 </style>
 </head>
@@ -57,7 +63,7 @@
         </div>
       </div>
     </div>
-    <div class="bar"><div class="fill" id="fill"></div></div>
+    <div class="seek" id="seek"><div class="bar"><div class="fill" id="fill"></div></div><div class="tip" id="tip">0:00</div></div>
   </div>
 <script>
   const $ = (id) => document.getElementById(id);
@@ -74,11 +80,37 @@
     if (d.accent) document.documentElement.style.setProperty('--accent', d.accent);
     $('playIcon').firstElementChild.setAttribute('d', d.paused ? PLAY : PAUSE);
   });
+  const fmt = (s) => { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+  let dragging = false;
   setInterval(() => {
-    if (!np || !np.duration) return;
+    if (!np || !np.duration || dragging) return;
     const t = np.currentTime + (np.paused ? 0 : (Date.now() - at) / 1000);
     $('fill').style.width = Math.min(100, t / np.duration * 100) + '%';
-  }, 500);
+  }, 250);
+  // İlerleme çubuğu: tıkla ya da sürükle
+  const seekEl = $('seek');
+  const frac = (e) => { const r = seekEl.getBoundingClientRect(); return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)); };
+  const preview = (e) => {
+    const f = frac(e); $('tip').style.left = (f * 100) + '%';
+    if (np && np.duration) $('tip').textContent = fmt(f * np.duration);
+    return f;
+  };
+  seekEl.addEventListener('mousemove', preview);
+  seekEl.addEventListener('pointerdown', (e) => {
+    if (!np || !np.duration) return;
+    dragging = true; seekEl.classList.add('drag'); seekEl.setPointerCapture(e.pointerId);
+    $('fill').style.width = preview(e) * 100 + '%';
+  });
+  seekEl.addEventListener('pointermove', (e) => { if (dragging) $('fill').style.width = preview(e) * 100 + '%'; });
+  const finish = (e) => {
+    if (!dragging) return;
+    dragging = false; seekEl.classList.remove('drag');
+    const t = frac(e) * np.duration;
+    window.ytmd.control('seek', t);
+    np = { ...np, currentTime: t }; at = Date.now();
+  };
+  seekEl.addEventListener('pointerup', finish);
+  seekEl.addEventListener('pointercancel', () => { dragging = false; seekEl.classList.remove('drag'); });
   $('prev').onclick = () => window.ytmd.control('prev');
   $('next').onclick = () => window.ytmd.control('next');
   $('play').onclick = () => window.ytmd.control('playpause');
