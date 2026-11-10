@@ -86,6 +86,10 @@
         </div>
         <div class="item"><div class="txt"><b>Şarkı geçiş animasyonları</b><span>Şarkı değişince renkler ve kapak yumuşakça geçer</span></div>
           <label class="sw"><input type="checkbox" data-key="transitions"><i></i></label></div>
+        <div class="item"><div class="txt"><b>"Sana özel" ana sayfa</b><span>Ana sayfanın üstünde kitaplık kısayolları ve son çaldıkların</span></div>
+          <label class="sw"><input type="checkbox" data-key="homeHero"><i></i></label></div>
+        <div class="item"><div class="txt"><b>Görev çubuğunda ilerleme</b><span>Şarkının ne kadarının çaldığı görev çubuğu simgesinde görünür</span></div>
+          <label class="sw"><input type="checkbox" data-key="taskbarProgress"><i></i></label></div>
         <div class="item"><div class="txt"><b>Modern arayüz</b><span>Kapatırsan YouTube Music'in orijinal görünümüne döner (uygulama yeniden başlar)</span></div>
           <label class="sw"><input type="checkbox" data-key="theme"><i></i></label></div>
       </div>
@@ -100,6 +104,12 @@
         <div class="eq" id="eq"></div>
         <div class="item"><div class="txt"><b>Ses seviyesini eşitle</b><span>Şarkılar arasındaki ses farkını azaltır, ani yüksek sesleri yumuşatır</span></div>
           <label class="sw"><input type="checkbox" data-key="normalize"><i></i></label></div>
+        <div class="item"><div class="txt"><b>Yumuşak geçiş: <span id="cfLbl" style="color:var(--accent)">Kapalı</span></b><span>Şarkı biterken ses yavaşça kısılır, yenisi yavaşça açılır</span></div>
+          <input type="range" id="cf" min="0" max="12" step="1" style="width:180px;accent-color:var(--accent)"></div>
+        <div class="item"><div class="txt"><b>Oynatma hızı</b><span>Sesin tonu değişmez, sadece hız</span></div>
+          <select id="speed"><option value="0.75">0,75x</option><option value="0.9">0,9x</option><option value="1">Normal</option><option value="1.1">1,1x</option><option value="1.25">1,25x</option><option value="1.5">1,5x</option></select></div>
+        <div class="item"><div class="txt"><b>Ses çıkışı</b><span>Müziğin hangi hoparlör ya da kulaklıktan çalacağı</span></div>
+          <select id="dev" style="max-width:260px"><option value="">Sistem varsayılanı</option></select></div>
       </div>
     </section>
 
@@ -134,6 +144,8 @@
       <div class="box">
         <div class="item"><div class="txt"><b>Dinlemeleri kaydet</b><span>Sadece bu bilgisayarda saklanır, hiçbir yere gönderilmez</span></div>
           <label class="sw"><input type="checkbox" data-key="stats"><i></i></label></div>
+        <div class="item"><div class="txt"><b>Günlük dinleme hedefi</b><span>Hedefe ulaştığında haber verir, her gün tamamladıkça serin büyür</span></div>
+          <select id="goal"><option value="15">15 dakika</option><option value="30">30 dakika</option><option value="60">1 saat</option><option value="90">1,5 saat</option><option value="120">2 saat</option><option value="180">3 saat</option></select></div>
         <div class="item"><div class="txt"><b id="histCount">—</b><span>İstatistiklerini ve dinleme geçmişini gör</span></div>
           <button class="btn primary" id="openStats">İstatistikleri aç</button>
           <button class="btn danger" id="clearHist">Geçmişi sil</button></div>
@@ -242,7 +254,24 @@
     $('ver').textContent = 'YouTube Music Desktop ' + (s.version || '');
     $('updState').textContent = s.updateState || ''; window.ytmd.updateInfo().then(showUpd);
     refreshSleep(); refreshCount();
+    $('cf').value = s.crossfade || 0; $('cf').oninput();
+    $('speed').value = String(s.speed || 1);
+    $('goal').value = String(s.dailyGoal || 30);
+    loadDevices(s.outputDevice || '');
   });
+  $('cf').oninput = () => { $('cfLbl').textContent = +$('cf').value ? $('cf').value + ' saniye' : 'Kapalı'; };
+  $('cf').onchange = () => set('crossfade', +$('cf').value);
+  $('speed').onchange = () => set('speed', +$('speed').value);
+  $('goal').onchange = () => set('dailyGoal', +$('goal').value);
+  $('dev').onchange = () => set('outputDevice', $('dev').value);
+  async function loadDevices(cur) {
+    const list = await window.ytmd.getDevices();
+    const sel = $('dev'); sel.replaceChildren(new Option('Sistem varsayılanı', ''));
+    (list || []).forEach((d) => sel.append(new Option(d.label, d.id)));
+    if (cur && !(list || []).some((d) => d.id === cur)) sel.append(new Option('Kayıtlı cihaz (bağlı değil)', cur));
+    sel.value = cur;
+  }
+  $('dev').onfocus = () => loadDevices($('dev').value);
 </script>
 </body>
 </html>
