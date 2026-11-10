@@ -387,3 +387,41 @@ html.ytmd-mode-amoled { background: #000 !important; }
 .ytmd-lib-empty { color: rgba(255,255,255,.55); font-size: 13px; padding: 14px 10px; }
 /* daraltılmış (simge) menüde kitaplığı gösterme */
 ytmusic-app-layout[guide-collapsed] #ytmd-lib, #mini-guide #ytmd-lib { display: none; }
+
+/* ===================== Ana sayfa: "Sana özel" ===================== */
+#ytmd-home { padding: 6px 0 14px; color: #fff; font-family: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
+:root:not(.ytmd-home-page) #ytmd-home { display: none; }
+.ytmd-h-greet { font-size: 32px; font-weight: 800; letter-spacing: -0.02em; margin: 6px 0 16px; }
+.ytmd-h-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.ytmd-h-tile {
+  position: relative; display: flex; align-items: center; gap: 12px; height: 60px; padding-right: 52px;
+  border-radius: 8px; overflow: hidden; cursor: pointer;
+  background: rgba(255, 255, 255, 0.08); transition: background .15s;
+}
+.ytmd-h-tile:hover { background: rgba(255, 255, 255, 0.16); }
+.ytmd-h-tile img, .ytmd-h-tile .ytmd-h-ph { width: 60px; height: 60px; object-fit: cover; flex: none; box-shadow: 4px 0 14px rgba(0,0,0,.3); }
+.ytmd-h-ph { display: grid; place-items: center; font-size: 24px; font-weight: 800; background: linear-gradient(135deg, #5a3cf0, color-mix(in srgb, var(--ytmd-accent) 80%, #fff)); }
+.ytmd-h-ph.big { width: 100%; height: 100%; font-size: 48px; }
+.ytmd-h-tile span { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.25; }
+.ytmd-h-play {
+  position: absolute; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
+  background: var(--ytmd-accent); color: #fff; box-shadow: 0 8px 20px rgba(0,0,0,.45);
+  opacity: 0; transform: translateY(6px); transition: opacity .18s, transform .22s cubic-bezier(.2,.8,.2,1);
+}
+.ytmd-h-tile .ytmd-h-play { right: 10px; top: 10px; }
+.ytmd-h-tile:hover .ytmd-h-play, .ytmd-h-card:hover .ytmd-h-play { opacity: 1; transform: none; }
+.ytmd-h-title { font-size: 22px; font-weight: 800; margin: 28px 0 12px; letter-spacing: -0.01em; }
+.ytmd-h-row { display: grid; grid-auto-flow: column; grid-auto-columns: 172px; gap: 6px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
+.ytmd-h-card { padding: 10px; border-radius: 12px; cursor: pointer; transition: background .15s; min-width: 0; }
+.ytmd-h-card:hover { background: rgba(255, 255, 255, 0.07); }
+.ytmd-h-cov { position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; margin-bottom: 10px; box-shadow: 0 10px 26px rgba(0,0,0,.45); }
+.ytmd-h-cov img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ytmd-h-card .ytmd-h-play { right: 8px; bottom: 8px; width: 46px; height: 46px; }
+.ytmd-h-card b { display: block; font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ytmd-h-card span { display: block; font-size: 13px; color: rgba(255,255,255,.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+/* YouTube'un kendi raflarındaki kartlar: daha yuvarlak, üstüne gelince hafif kalkan */
+.ytmd-home-page ytmusic-carousel-shelf-renderer ytmusic-two-row-item-renderer { border-radius: 12px; padding: 8px; transition: background .15s; }
+.ytmd-home-page ytmusic-carousel-shelf-renderer ytmusic-two-row-item-renderer:hover { background: rgba(255, 255, 255, 0.06); }
+.ytmd-home-page ytmusic-carousel-shelf-renderer ytmusic-two-row-item-renderer ytmusic-thumbnail-renderer,
+.ytmd-home-page ytmusic-carousel-shelf-renderer ytmusic-two-row-item-renderer img { border-radius: 10px !important; }
+.ytmd-home-page ytmusic-carousel-shelf-renderer .title.ytmusic-carousel-shelf-basic-header-renderer { font-size: 24px !important; font-weight: 800 !important; letter-spacing: -0.01em; }
