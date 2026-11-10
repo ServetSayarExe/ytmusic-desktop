@@ -138,3 +138,38 @@
 .ytmd-f-lyrics .ytmd-ly-line { font-size: clamp(22px, 2.6vw, 38px); color: rgba(255, 255, 255, 0.35); margin-bottom: 22px; }
 .ytmd-f-lyrics .ytmd-ly-line.active { color: #fff; }
 .ytmd-f-lyrics .ytmd-ly-msg { font-size: 20px; text-align: left; }
+
+/* ===================== Güncelleme kartı ===================== */
+#ytmd-update {
+  position: fixed; top: 76px; left: 50%; z-index: 2147483645;
+  display: flex; gap: 14px; align-items: flex-start;
+  width: min(440px, calc(100vw - 40px)); padding: 16px 18px; box-sizing: border-box;
+  border-radius: 18px; color: #fff;
+  background: rgba(22, 22, 30, 0.96); backdrop-filter: blur(20px);
+  border: 1px solid color-mix(in srgb, var(--ytmd-accent) 45%, rgba(255, 255, 255, 0.1));
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55), 0 0 0 4px color-mix(in srgb, var(--ytmd-accent) 12%, transparent);
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  opacity: 0; pointer-events: none; transform: translate(-50%, -14px);
+  transition: opacity .25s ease, transform .35s cubic-bezier(.2, .8, .2, 1);
+}
+#ytmd-update.show { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
+.ytmd-upd-icon {
+  flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
+  background: var(--ytmd-accent); color: #fff;
+}
+#ytmd-update.busy .ytmd-upd-icon { animation: ytmd-upd-pulse 1s ease-in-out infinite; }
+@keyframes ytmd-upd-pulse { 50% { transform: translateY(3px); } }
+.ytmd-upd-body { flex: 1; min-width: 0; }
+.ytmd-upd-title { font-weight: 700; font-size: 15px; }
+.ytmd-upd-notes { margin-top: 3px; font-size: 13px; color: rgba(255, 255, 255, 0.7); line-height: 1.4; }
+.ytmd-upd-actions { display: flex; gap: 8px; margin-top: 12px; }
+.ytmd-upd-btn {
+  border: 0; border-radius: 999px; padding: 8px 16px; cursor: pointer;
+  font: 600 13px "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  background: rgba(255, 255, 255, 0.1); color: #fff; transition: background .15s, transform .15s;
+}
+.ytmd-upd-btn:hover { background: rgba(255, 255, 255, 0.18); }
+.ytmd-upd-btn.primary { background: #fff; color: #0b0b0f; }
+.ytmd-upd-btn.primary:hover { transform: scale(1.04); background: #fff; }
+#ytmd-update.busy .ytmd-upd-btn.primary { opacity: .7; pointer-events: none; }
+.ytmd-full-open #ytmd-update { z-index: 2147483647; }
