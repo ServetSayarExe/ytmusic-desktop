@@ -173,3 +173,94 @@
 .ytmd-upd-btn.primary:hover { transform: scale(1.04); background: #fff; }
 #ytmd-update.busy .ytmd-upd-btn.primary { opacity: .7; pointer-events: none; }
 .ytmd-full-open #ytmd-update { z-index: 2147483647; }
+
+/* ===================== Ses açılır paneli ===================== */
+#ytmd-actions .ytmd-act#ytmd-audio-btn, #ytmd-queue-btn { position: relative; }
+.ytmd-audio-open #ytmd-audio-btn, .ytmd-queue-open #ytmd-queue-btn { background: rgba(255, 255, 255, 0.16); color: #fff; }
+#ytmd-audio {
+  position: fixed; right: 30px; bottom: 152px; z-index: 2147483641; width: 300px; box-sizing: border-box;
+  padding: 14px 16px 16px; border-radius: 18px; color: #fff;
+  background: rgba(22, 22, 30, 0.95); backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+  font: 13px "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  opacity: 0; transform: translateY(10px) scale(.98); pointer-events: none; transform-origin: bottom right;
+  transition: opacity .18s ease, transform .22s cubic-bezier(.2, .8, .2, 1);
+}
+.ytmd-audio-open #ytmd-audio { opacity: 1; transform: none; pointer-events: auto; }
+.ytmd-ap-h { display: flex; justify-content: space-between; font-weight: 700; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: rgba(255,255,255,.6); margin: 12px 0 8px; }
+.ytmd-ap-h:first-child { margin-top: 2px; }
+.ytmd-ap-val { color: var(--ytmd-accent); letter-spacing: 0; text-transform: none; font-size: 13px; }
+.ytmd-ap-chips { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+.ytmd-ap-chip {
+  border: 0; border-radius: 9px; padding: 7px 0; cursor: pointer; font: 600 12px inherit; font-family: inherit;
+  background: rgba(255, 255, 255, 0.08); color: #fff; transition: background .15s;
+}
+.ytmd-ap-chip:hover { background: rgba(255, 255, 255, 0.15); }
+.ytmd-ap-chip.on { background: var(--ytmd-accent); }
+.ytmd-ap-range { width: 100%; accent-color: var(--ytmd-accent); margin: 0; cursor: pointer; }
+.ytmd-ap-hint { color: rgba(255,255,255,.5); font-size: 12px; margin-top: 4px; }
+.ytmd-ap-select {
+  width: 100%; padding: 8px 10px; border-radius: 10px; font: inherit; cursor: pointer;
+  background: rgba(255, 255, 255, 0.08); color: #fff; border: 1px solid rgba(255, 255, 255, 0.12); outline: none;
+}
+.ytmd-ap-select option { background: #1a1a22; }
+
+/* ===================== Sıradakiler paneli ===================== */
+#ytmd-queue {
+  position: fixed; right: 14px; top: 76px; bottom: 156px; width: 380px; z-index: 2147483639;
+  display: flex; flex-direction: column; border-radius: 22px; overflow: hidden; color: #fff;
+  background: rgba(14, 14, 20, 0.82); backdrop-filter: blur(30px) saturate(1.5);
+  border: 1px solid rgba(255, 255, 255, 0.09); box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  opacity: 0; transform: translateX(24px) scale(.98); pointer-events: none;
+  transition: opacity .25s ease, transform .3s cubic-bezier(.2, .8, .2, 1);
+}
+.ytmd-queue-open #ytmd-queue { opacity: 1; transform: none; pointer-events: auto; }
+.ytmd-full-open #ytmd-queue, .ytmd-full-open #ytmd-audio { visibility: hidden; }
+.ytmd-q-body { flex: 1; overflow-y: auto; padding: 6px 10px 16px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.18) transparent; }
+.ytmd-q-h { font-weight: 700; font-size: 15px; padding: 14px 8px 8px; }
+.ytmd-q-row { display: flex; align-items: center; gap: 12px; padding: 6px 8px; border-radius: 10px; cursor: pointer; transition: background .12s; }
+.ytmd-q-row:hover { background: rgba(255, 255, 255, 0.07); }
+.ytmd-q-row.now { cursor: default; background: color-mix(in srgb, var(--ytmd-accent) 16%, transparent); }
+.ytmd-q-row.now .ytmd-q-title { color: var(--ytmd-accent); }
+.ytmd-q-row.auto { opacity: .8; }
+.ytmd-q-art { position: relative; width: 46px; height: 46px; flex: none; }
+.ytmd-q-cover { width: 46px; height: 46px; border-radius: 7px; object-fit: cover; background: #23232c; display: block; }
+.ytmd-q-hover { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 7px; background: rgba(0,0,0,.5); opacity: 0; transition: opacity .12s; }
+.ytmd-q-row:not(.now):hover .ytmd-q-hover { opacity: 1; }
+.ytmd-q-meta { flex: 1; min-width: 0; }
+.ytmd-q-title, .ytmd-q-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ytmd-q-title { font-weight: 600; font-size: 14px; }
+.ytmd-q-sub { color: rgba(255, 255, 255, 0.6); font-size: 13px; margin-top: 1px; }
+.ytmd-q-len { color: rgba(255, 255, 255, 0.5); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+/* ===================== Şarkı kartı ===================== */
+#ytmd-card {
+  position: fixed; inset: 0; z-index: 2147483646; display: grid; place-items: center;
+  background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(8px);
+  opacity: 0; pointer-events: none; transition: opacity .2s ease;
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; color: #fff;
+}
+.ytmd-card-open #ytmd-card { opacity: 1; pointer-events: auto; }
+.ytmd-card-box {
+  position: relative; display: flex; gap: 26px; align-items: center; padding: 22px;
+  border-radius: 26px; background: rgba(22, 22, 30, 0.97); border: 1px solid rgba(255,255,255,.1);
+  box-shadow: 0 40px 100px rgba(0,0,0,.6); transform: scale(.96); transition: transform .3s cubic-bezier(.2, .8, .2, 1);
+  max-width: calc(100vw - 40px); box-sizing: border-box;
+}
+.ytmd-card-open .ytmd-card-box { transform: none; }
+.ytmd-card-x { position: absolute; top: 14px; right: 14px; }
+.ytmd-card-pv { width: min(36vh, 300px); aspect-ratio: 4 / 5; border-radius: 16px; overflow: hidden; background: #111117; display: grid; place-items: center; flex: none; }
+.ytmd-card-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ytmd-card-img:not([src]) { display: none; }
+.ytmd-card-msg { color: rgba(255,255,255,.6); }
+.ytmd-card-side { width: 250px; display: flex; flex-direction: column; gap: 8px; padding-right: 10px; }
+.ytmd-card-h { font: 800 22px "Segoe UI Variable Display", "Segoe UI", sans-serif; }
+.ytmd-card-p { color: rgba(255,255,255,.65); font-size: 13px; line-height: 1.45; margin-bottom: 8px; }
+.ytmd-card-btn {
+  display: flex; align-items: center; gap: 10px; border: 0; border-radius: 12px; padding: 11px 14px; cursor: pointer;
+  background: rgba(255, 255, 255, 0.08); color: #fff; font: 600 14px inherit; font-family: inherit; transition: background .15s, transform .15s;
+}
+.ytmd-card-btn:hover { background: rgba(255, 255, 255, 0.15); }
+.ytmd-card-btn.primary { background: var(--ytmd-accent); }
+.ytmd-card-btn.primary:hover { transform: scale(1.02); background: var(--ytmd-accent); }
