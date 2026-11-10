@@ -357,7 +357,7 @@ function createWindow() {
     win.webContents.insertCSS(readText('core.css')).catch(() => {});
     if (settings.theme) win.webContents.insertCSS(readText('theme.css')).catch(() => {});
     win.webContents.executeJavaScript(`window.__ytmdTheme = ${settings.theme ? 'true' : 'false'};\n${readText('page.js')}`)
-      .then(() => { pushPageSettings(); applyAccent(hexToRgb(accentHex)); if (sleep.mode === 'track') setSleep('track'); })
+      .then(() => { pushPageSettings(); applyAccent(hexToRgb(accentHex)); if (sleep.mode === 'track') setSleep('track'); showUpdateCard(); })
       .catch((e) => console.error('page.js', e));
   });
 
@@ -421,7 +421,24 @@ function pushMini() {
 }
 
 // ---------------- Otomatik güncelleme ----------------
-let updater = null, updateState = '', updateReady = false;
+let updater = null, updateState = '', updateReady = false, pendingUpdate = null, downloading = null, updateFailed = false;
+const RELEASES_URL = 'https://github.com/morg000/ytmusic-desktop/releases/latest';
+function updateInfo() {
+  const stalled = !!(downloading && Date.now() - downloading.at > 60000);
+  return { state: stalled ? `İndirme takıldı (%${downloading.percent}). İnternet yavaş olabilir; "Elle indir" ile de kurabilirsin.` : updateState,
+    ready: updateReady, downloading: !!downloading && !stalled, percent: downloading ? downloading.percent : 0, offerManual: stalled || updateFailed, version: app.getVersion() };
+}
+// Sürüm notlarını düz metne çevir (GitHub sürüm açıklaması)
+function notesText(n) {
+  const raw = Array.isArray(n) ? n.map((x) => x.note || '').join('\n') : String(n || '');
+  return raw.replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 220);
+}
+const showUpdateCard = () => { if (pendingUpdate) pageJS(`window.__ytmdUpdate && window.__ytmdUpdate(${JSON.stringify(pendingUpdate)})`); };
+function installUpdate() {
+  if (!updater || !updateReady) return;
+  quitting = true; commitListen(true); saveHistory(true);
+  setImmediate(() => updater.quitAndInstall(true, true)); // sessiz kur + kendini yeniden başlat
+}
 function initUpdater() {
   if (!app.isPackaged) { updateState = 'Geliştirme sürümü (güncelleme yok)'; return; }
   if (!fs.existsSync(path.join(process.resourcesPath, 'app-update.yml'))) {
@@ -431,17 +448,26 @@ function initUpdater() {
   updater.autoDownload = true;
   updater.autoInstallOnAppQuit = true;
   updater.on('checking-for-update', () => { updateState = 'Denetleniyor…'; });
-  updater.on('update-available', (i) => { updateState = `Yeni sürüm indiriliyor: ${i.version}`; });
+  updater.on('update-available', (i) => { downloading = { version: i.version, percent: 0, at: Date.now() }; updateState = `Yeni sürüm indiriliyor: ${i.version}`; });
+  updater.on('download-progress', (p) => {
+    if (!downloading) downloading = { version: '', percent: 0, at: Date.now() };
+    downloading.percent = Math.round(p.percent || 0); downloading.at = Date.now();
+    updateState = `İndiriliyor: %${downloading.percent}` + (p.bytesPerSecond ? ` (${(p.bytesPerSecond / 1048576).toFixed(1)} MB/sn)` : '');
+  });
   updater.on('update-not-available', () => { updateState = 'En güncel sürümü kullanıyorsun'; });
-  updater.on('error', () => { updateState = 'Güncelleme denetlenemedi (internet?)'; });
+  updater.on('error', () => { downloading = null; updateState = 'Güncelleme indirilemedi. "Elle indir" ile sürüm sayfasından kurabilirsin.'; updateFailed = true; });
   updater.on('update-downloaded', (i) => {
-    updateReady = true;
-    updateState = `${i.version} hazır — uygulama kapanınca kurulacak`;
+    updateReady = true; downloading = null;
+    updateState = `${i.version} hazır — "Şimdi güncelle" ile kurup yeniden başlatabilirsin`;
+    pendingUpdate = { version: String(i.version || ''), notes: notesText(i.releaseNotes) };
     buildTrayMenu();
-    try { new Notification({ title: 'YouTube Music güncellendi', body: `${i.version} sürümü hazır. Tepsi menüsünden hemen kurabilirsin.`, silent: true }).show(); } catch (e) {}
+    showUpdateCard();
+    if (!win || !win.isVisible()) {
+      try { new Notification({ title: 'YouTube Music için güncelleme hazır', body: `${i.version} sürümü indirildi. Uygulamayı açıp "Şimdi güncelle"ye basman yeterli.`, silent: true }).show(); } catch (e) {}
+    }
   });
   const check = () => updater.checkForUpdates().catch(() => {});
-  setTimeout(check, 15000);
+  setTimeout(check, 10000);
   setInterval(check, 6 * 3600 * 1000);
 }
 
@@ -462,6 +488,7 @@ ipcMain.handle('ytmd-share', (e, d) => {
 });
 ipcMain.on('ytmd-mini-toggle', (e) => { if (fromMain(e)) toggleMini(); });
 ipcMain.on('ytmd-open-settings', (e) => { if (fromMain(e)) openSettings(); });
+ipcMain.on('ytmd-update-install', (e) => { if (fromMain(e) || isFrom(e, settingsRef)) installUpdate(); });
 ipcMain.on('ytmd-sleep-done', (e) => { if (fromMain(e)) { sleep = { mode: 'off', until: 0 }; buildTrayMenu(); } });
 // mini oynatıcı
 const fromMini = (e) => miniWin && !miniWin.isDestroyed() && e.sender === miniWin.webContents;
@@ -474,11 +501,12 @@ ipcMain.on('ytmd-settings-set', (e, k, v) => { if (isFrom(e, settingsRef)) setSe
 ipcMain.handle('ytmd-sleep-get', (e) => (isFrom(e, settingsRef) ? sleep : null));
 ipcMain.on('ytmd-sleep-set', (e, m) => { if (isFrom(e, settingsRef)) setSleep(String(m)); });
 ipcMain.handle('ytmd-update-check', async (e) => {
-  if (!isFrom(e, settingsRef)) return '';
-  if (!updater) return updateState;
-  try { const r = await updater.checkForUpdates(); return r && r.updateInfo && r.updateInfo.version !== app.getVersion() ? `Yeni sürüm bulundu: ${r.updateInfo.version} — indiriliyor` : 'En güncel sürümü kullanıyorsun'; }
-  catch { return 'Güncelleme denetlenemedi (internet?)'; }
+  if (!isFrom(e, settingsRef)) return null;
+  if (updater && !updateReady && !downloading) { updateFailed = false; try { await updater.checkForUpdates(); } catch { updateState = 'Güncelleme denetlenemedi (internet?)'; updateFailed = true; } }
+  return updateInfo();
 });
+ipcMain.handle('ytmd-update-info', (e) => (isFrom(e, settingsRef) ? updateInfo() : null));
+ipcMain.on('ytmd-open-releases', (e) => { if (isFrom(e, settingsRef)) shell.openExternal(RELEASES_URL); });
 // istatistikler
 const fromStatsOrSettings = (e) => isFrom(e, statsRef) || isFrom(e, settingsRef);
 ipcMain.handle('ytmd-history-get', (e) => (fromStatsOrSettings(e) ? { history, accent: accentHex } : null));
@@ -512,7 +540,7 @@ function buildTrayMenu() {
     { label: 'Ayarlar', click: openSettings },
     { type: 'separator' }
   ];
-  if (updateReady) template.push({ label: 'Güncellemeyi kur ve yeniden başlat', click: () => { quitting = true; commitListen(true); updater.quitAndInstall(true, true); } });
+  if (updateReady) template.push({ label: 'Güncellemeyi kur ve yeniden başlat', click: installUpdate });
   template.push({ label: 'Çıkış', click: () => { quitting = true; app.quit(); } });
   tray.setContextMenu(Menu.buildFromTemplate(template));
 }
