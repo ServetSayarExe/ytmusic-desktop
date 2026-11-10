@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+<title>İstatistikler</title>
+<style>
+  :root { --accent: #ff4d6d; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: #0b0b10; color: #fff; min-height: 100vh;
+    font: 14px/1.45 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  }
+  .hero {
+    padding: 34px 40px 22px;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 45%, #0b0b10), #0b0b10);
+  }
+  h1 { margin: 0; font: 800 34px/1.1 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; letter-spacing: -0.02em; }
+  .sub { color: rgba(255,255,255,.7); margin-top: 6px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 20px; }
+  .pill {
+    border: 0; border-radius: 999px; padding: 8px 15px; cursor: pointer; font: 600 13px inherit; font-family: inherit;
+    background: rgba(255,255,255,.1); color: #fff; transition: background .15s;
+  }
+  .pill:hover { background: rgba(255,255,255,.18); }
+  .pill.on { background: #fff; color: #0b0b10; }
+  .spacer { flex: 1; }
+  main { padding: 10px 40px 50px; }
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .card { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.07); border-radius: 18px; padding: 18px 20px; }
+  .big { font: 800 34px/1 "Segoe UI Variable Display", "Segoe UI", sans-serif; letter-spacing: -0.02em; }
+  .label { color: rgba(255,255,255,.6); font-size: 13px; margin-top: 6px; }
+  h2 { font-size: 20px; margin: 30px 0 12px; }
+  .top1 { display: flex; gap: 22px; align-items: center; padding: 20px; border-radius: 22px;
+    background: linear-gradient(120deg, color-mix(in srgb, var(--accent) 30%, transparent), rgba(255,255,255,.04)); border: 1px solid rgba(255,255,255,.08); }
+  .top1.row img, .top1 .ph { width: 130px; height: 130px; border-radius: 14px; object-fit: cover; box-shadow: 0 18px 40px rgba(0,0,0,.5); }
+  .top1 .t { font: 800 26px/1.15 "Segoe UI Variable Display", "Segoe UI", sans-serif; }
+  .kicker { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+  .grid2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 24px; }
+  .row { display: flex; align-items: center; gap: 12px; padding: 7px 10px; border-radius: 10px; cursor: pointer; }
+  .row:hover { background: rgba(255,255,255,.07); }
+  .rank { width: 22px; text-align: right; color: rgba(255,255,255,.5); font-variant-numeric: tabular-nums; }
+  .row img, .ph { width: 42px; height: 42px; border-radius: 7px; object-fit: cover; background: #222; flex: none; }
+  .ph { background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 60%, #222), #222); }
+  .meta { flex: 1; min-width: 0; }
+  .meta b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+  .meta span { color: rgba(255,255,255,.6); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+  .count { color: rgba(255,255,255,.6); font-size: 13px; white-space: nowrap; }
+  .art { margin-bottom: 12px; }
+  .art .name { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 5px; }
+  .art .track { height: 8px; border-radius: 8px; background: rgba(255,255,255,.08); overflow: hidden; }
+  .art .fill { height: 100%; border-radius: 8px; background: var(--accent); }
+  .hours { display: flex; align-items: flex-end; gap: 4px; height: 120px; padding-top: 10px; }
+  .hours div { flex: 1; background: color-mix(in srgb, var(--accent) 70%, transparent); border-radius: 4px 4px 0 0; min-height: 2px; }
+  .hlabels { display: flex; justify-content: space-between; color: rgba(255,255,255,.45); font-size: 11px; margin-top: 6px; }
+  input.search {
+    width: 100%; max-width: 420px; padding: 11px 16px; border-radius: 999px; border: 1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.06); color: #fff; font: inherit; outline: none; margin: 16px 0 6px;
+  }
+  input.search:focus { border-color: rgba(255,255,255,.3); }
+  .day { margin: 22px 0 6px; font-weight: 700; color: rgba(255,255,255,.85); }
+  .time { width: 44px; color: rgba(255,255,255,.5); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .empty { text-align: center; color: rgba(255,255,255,.6); padding: 70px 20px; font-size: 16px; }
+  .hidden { display: none; }
+  ::-webkit-scrollbar { width: 10px; } ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 10px; }
+</style>
+</head>
+<body>
+  <div class="hero">
+    <h1>Dinleme istatistiklerin</h1>
+    <div class="sub" id="sub">Yükleniyor…</div>
+    <div class="bar">
+      <button class="pill on" data-tab="summary">Özet</button>
+      <button class="pill" data-tab="history">Geçmiş</button>
+      <span class="spacer"></span>
+      <button class="pill" data-p="7">7 gün</button>
+      <button class="pill on" data-p="30">30 gün</button>
+      <button class="pill" data-p="365">1 yıl</button>
+      <button class="pill" data-p="0">Tüm zamanlar</button>
+    </div>
+  </div>
+  <main>
+    <section id="summary"></section>
+    <section id="history" class="hidden">
+      <input class="search" id="q" placeholder="Geçmişte ara: şarkı veya sanatçı">
+      <div id="hlist"></div>
+    </section>
+  </main>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const h = (tag, props = {}, kids = []) => {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(props)) {
+      if (k === 'class') e.className = v; else if (k === 'text') e.textContent = v;
+      else if (k === 'style') e.style.cssText = v; else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+      else e.setAttribute(k, v);
+    }
+    kids.forEach((c) => c && e.appendChild(c)); return e;
+  };
+  const img = (src, size = 120) => {
+    if (!/^https:\/\//.test(src || '')) return h('div', { class: 'ph' });
+    const i = h('img', { src: src.replace(/=w\d+-h\d+/, `=w${size}-h${size}`), alt: '' });
+    i.onerror = () => i.replaceWith(h('div', { class: 'ph' }));
+    return i;
+  };
+  const firstArtist = (a) => String(a || '').split(/,|&| x | X | ve | feat\.? | ft\.? /)[0].trim() || 'Bilinmeyen';
+  const dur = (sec) => { const m = Math.round(sec / 60); return m < 60 ? `${m} dk` : `${Math.floor(m / 60)} sa ${m % 60} dk`; };
+
+  let all = [], period = 30, tab = 'summary';
+  const play = (id) => id && window.ytmd.playVideo(id);
+
+  function filtered() {
+    if (!period) return all;
+    const from = Date.now() - period * 86400000;
+    return all.filter((x) => x.t >= from);
+  }
+
+  function renderSummary() {
+    const list = filtered();
+    const box = $('summary'); box.replaceChildren();
+    if (list.length < 1) { box.append(h('div', { class: 'empty', text: 'Bu dönemde henüz dinleme yok. Biraz müzik dinle, burası dolacak 🎧' })); return; }
+    const sec = list.reduce((s, x) => s + (x.sec || 0), 0);
+    const songs = new Map(), artists = new Map(), hours = new Array(24).fill(0);
+    for (const x of list) {
+      const k = x.id || x.title + '|' + x.artist;
+      const s = songs.get(k) || { ...x, plays: 0, secs: 0 }; s.plays++; s.secs += x.sec || 0; songs.set(k, s);
+      const a = firstArtist(x.artist); artists.set(a, (artists.get(a) || 0) + (x.sec || 0));
+      hours[new Date(x.t).getHours()] += x.sec || 0;
+    }
+    const topSongs = [...songs.values()].sort((a, b) => b.plays - a.plays || b.secs - a.secs).slice(0, 10);
+    const topArtists = [...artists.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+    const maxA = topArtists[0] ? topArtists[0][1] : 1, maxH = Math.max(...hours, 1);
+    const peak = hours.indexOf(Math.max(...hours));
+
+    box.append(h('div', { class: 'cards' }, [
+      h('div', { class: 'card' }, [h('div', { class: 'big', text: dur(sec) }), h('div', { class: 'label', text: 'toplam dinleme' })]),
+      h('div', { class: 'card' }, [h('div', { class: 'big', text: String(list.length) }), h('div', { class: 'label', text: 'dinlenen şarkı' })]),
+      h('div', { class: 'card' }, [h('div', { class: 'big', text: String(songs.size) }), h('div', { class: 'label', text: 'farklı şarkı' })])
+    ]));
+    const t1 = topSongs[0];
+    box.append(h('h2', { text: 'Bir numaran' }));
+    box.append(h('div', { class: 'top1 row', onclick: () => play(t1.id) }, [
+      img(t1.art, 300),
+      h('div', {}, [
+        h('div', { class: 'kicker', text: 'En çok dinlediğin şarkı' }),
+        h('div', { class: 't', text: t1.title }),
+        h('div', { class: 'sub', text: `${t1.artist} · ${t1.plays} kez · ${dur(t1.secs)}` })
+      ])
+    ]));
+    const songsCol = h('div', {}, [h('h2', { text: 'En çok dinlediğin şarkılar' })]);
+    topSongs.forEach((s, i) => songsCol.append(h('div', { class: 'row', title: 'Çal', onclick: () => play(s.id) }, [
+      h('div', { class: 'rank', text: String(i + 1) }), img(s.art),
+      h('div', { class: 'meta' }, [h('b', { text: s.title }), h('span', { text: s.artist })]),
+      h('div', { class: 'count', text: `${s.plays} kez` })
+    ])));
+    const artCol = h('div', {}, [h('h2', { text: 'En çok dinlediğin sanatçılar' })]);
+    topArtists.forEach(([name, s]) => artCol.append(h('div', { class: 'art' }, [
+      h('div', { class: 'name' }, [h('span', { text: name }), h('span', { class: 'count', text: dur(s) })]),
+      h('div', { class: 'track' }, [h('div', { class: 'fill', style: `width:${Math.max(4, s / maxA * 100)}%` })])
+    ])));
+    artCol.append(h('h2', { text: `En çok ${String(peak).padStart(2, '0')}:00 civarı dinliyorsun` }));
+    artCol.append(h('div', { class: 'hours' }, hours.map((v, i) => h('div', { title: `${i}:00 — ${dur(v)}`, style: `height:${v / maxH * 100}%` }))));
+    artCol.append(h('div', { class: 'hlabels' }, ['00', '06', '12', '18', '23'].map((t) => h('span', { text: t }))));
+    box.append(h('div', { class: 'grid2' }, [songsCol, artCol]));
+  }
+
+  function dayLabel(d) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const day = new Date(d); day.setHours(0, 0, 0, 0);
+    const diff = Math.round((today - day) / 86400000);
+    if (diff === 0) return 'Bugün'; if (diff === 1) return 'Dün';
+    return day.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'long', year: day.getFullYear() !== today.getFullYear() ? 'numeric' : undefined });
+  }
+  function renderHistory() {
+    const q = $('q').value.trim().toLocaleLowerCase('tr');
+    const list = filtered().filter((x) => !q || (x.title + ' ' + x.artist).toLocaleLowerCase('tr').includes(q)).slice().reverse().slice(0, 1500);
+    const box = $('hlist'); box.replaceChildren();
+    if (!list.length) { box.append(h('div', { class: 'empty', text: q ? 'Eşleşen dinleme yok.' : 'Bu dönemde henüz dinleme yok.' })); return; }
+    let last = '';
+    for (const x of list) {
+      const lbl = dayLabel(x.t);
+      if (lbl !== last) { last = lbl; box.append(h('div', { class: 'day', text: lbl })); }
+      box.append(h('div', { class: 'row', title: 'Çal', onclick: () => play(x.id) }, [
+        h('div', { class: 'time', text: new Date(x.t).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) }),
+        img(x.art), h('div', { class: 'meta' }, [h('b', { text: x.title }), h('span', { text: x.artist })])
+      ]));
+    }
+  }
+  function render() {
+    $('summary').classList.toggle('hidden', tab !== 'summary');
+    $('history').classList.toggle('hidden', tab !== 'history');
+    tab === 'summary' ? renderSummary() : renderHistory();
+  }
+  document.querySelectorAll('[data-tab]').forEach((b) => b.onclick = () => {
+    tab = b.dataset.tab; document.querySelectorAll('[data-tab]').forEach((x) => x.classList.toggle('on', x === b)); render();
+  });
+  document.querySelectorAll('[data-p]').forEach((b) => b.onclick = () => {
+    period = +b.dataset.p; document.querySelectorAll('[data-p]').forEach((x) => x.classList.toggle('on', x === b)); render();
+  });
+  $('q').addEventListener('input', () => renderHistory());
+
+  window.ytmd.getHistory().then(({ history, accent }) => {
+    all = Array.isArray(history) ? history : [];
+    if (accent) document.documentElement.style.setProperty('--accent', accent);
+    const first = all[0] ? new Date(all[0].t).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+    $('sub').textContent = all.length ? `${first} tarihinden beri ${all.length} dinleme kaydedildi` : 'Henüz kayıt yok — dinledikçe burası dolacak';
+    render();
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+<title>Mini oynatıcı</title>
+<style>
+  :root { --accent: #ff4d6d; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; background: transparent; overflow: hidden; user-select: none; }
+  body { font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; color: #fff; padding: 8px; }
+  .card {
+    position: relative; height: 100%; border-radius: 18px; overflow: hidden;
+    background: #111117; border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    -webkit-app-region: drag;
+  }
+  .bg { position: absolute; inset: -30%; background-size: cover; background-position: center; filter: blur(30px) saturate(1.7) brightness(.45); transition: background-image 1s; }
+  .row { position: relative; display: flex; align-items: center; gap: 12px; height: 100%; padding: 12px 12px 16px; }
+  .cover { width: 72px; height: 72px; border-radius: 12px; object-fit: cover; flex: none; background: #222; box-shadow: 0 8px 20px rgba(0,0,0,.5); }
+  .info { flex: 1; min-width: 0; }
+  .title { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .artist { font-size: 12px; color: rgba(255, 255, 255, 0.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .ctrls { display: flex; align-items: center; gap: 4px; margin-top: 8px; -webkit-app-region: no-drag; }
+  button {
+    width: 32px; height: 32px; border: 0; border-radius: 50%; background: transparent; color: #fff;
+    display: grid; place-items: center; cursor: pointer; transition: background .15s, transform .15s;
+    -webkit-app-region: no-drag;
+  }
+  button:hover { background: rgba(255, 255, 255, 0.14); }
+  button.play { width: 38px; height: 38px; background: #fff; color: #0b0b0f; }
+  button.play:hover { transform: scale(1.07); background: #fff; }
+  .top { position: absolute; top: 6px; right: 6px; display: flex; gap: 2px; opacity: 0; transition: opacity .2s; z-index: 2; }
+  .card:hover .top { opacity: 1; }
+  .top button { width: 24px; height: 24px; background: rgba(0, 0, 0, 0.35); }
+  .bar { position: absolute; left: 12px; right: 12px; bottom: 7px; height: 3px; border-radius: 3px; background: rgba(255, 255, 255, 0.18); overflow: hidden; }
+  .fill { height: 100%; width: 0; background: var(--accent); border-radius: 3px; }
+  svg { display: block; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="bg" id="bg"></div>
+    <div class="top">
+      <button id="open" title="Ana pencereyi aç"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M14 4h6v6M20 4l-8 8M10 4H4v16h16v-6"/></svg></button>
+      <button id="close" title="Kapat"><svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1 1l8 8M9 1L1 9"/></svg></button>
+    </div>
+    <div class="row">
+      <img class="cover" id="cover" alt="">
+      <div class="info">
+        <div class="title" id="title">Şarkı çalmıyor</div>
+        <div class="artist" id="artist">YouTube Music</div>
+        <div class="ctrls">
+          <button id="prev" title="Önceki"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+          <button id="play" class="play" title="Oynat / Duraklat"><svg id="playIcon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+          <button id="next" title="Sonraki"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+        </div>
+      </div>
+    </div>
+    <div class="bar"><div class="fill" id="fill"></div></div>
+  </div>
+<script>
+  const $ = (id) => document.getElementById(id);
+  let np = null, at = 0;
+  const PLAY = 'M8 5v14l11-7z', PAUSE = 'M7 5h3.5v14H7zM13.5 5H17v14h-3.5z';
+  window.ytmd.onNowPlaying((d) => {
+    np = d; at = Date.now();
+    $('title').textContent = d.title || 'Şarkı çalmıyor';
+    $('artist').textContent = d.artist || '';
+    if (d.artwork) {
+      const small = d.artwork.replace(/=w\d+-h\d+/, '=w226-h226');
+      if ($('cover').src !== small) { $('cover').src = small; $('bg').style.backgroundImage = 'url("' + small + '")'; }
+    }
+    if (d.accent) document.documentElement.style.setProperty('--accent', d.accent);
+    $('playIcon').firstElementChild.setAttribute('d', d.paused ? PLAY : PAUSE);
+  });
+  setInterval(() => {
+    if (!np || !np.duration) return;
+    const t = np.currentTime + (np.paused ? 0 : (Date.now() - at) / 1000);
+    $('fill').style.width = Math.min(100, t / np.duration * 100) + '%';
+  }, 500);
+  $('prev').onclick = () => window.ytmd.control('prev');
+  $('next').onclick = () => window.ytmd.control('next');
+  $('play').onclick = () => window.ytmd.control('playpause');
+  $('open').onclick = () => window.ytmd.showMain();
+  $('close').onclick = () => window.close();
+  window.ytmd.miniReady();
+</script>
+</body>
+</html>

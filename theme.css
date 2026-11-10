@@ -1,0 +1,336 @@
+/* ===== YouTube Music Desktop – Modern Tema ===== */
+:root {
+  --ytmd-glass: rgba(14, 14, 20, 0.62);
+  --ytmd-glass-strong: rgba(12, 12, 18, 0.70);
+  --ytmd-popup: rgba(26, 26, 34, 0.86);
+  --ytmd-border: rgba(255, 255, 255, 0.08);
+  --ytmd-hover: rgba(255, 255, 255, 0.07);
+  --ytmd-radius: 14px;
+  --ytmd-font: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+}
+
+/* --- Zemin: arka plan kapak görselinden gelsin --- */
+html { background: #07070a !important; }
+body, ytmusic-app, ytmusic-app-layout, #layout,
+ytmusic-browse-response, ytmusic-search-page, ytmusic-section-list-renderer,
+ytmusic-tabbed-search-results-renderer, ytmusic-player-page, #player-page,
+#browse-page, ytmusic-detail-header-renderer, ytmusic-immersive-header-renderer {
+  background: transparent !important;
+}
+body { font-family: var(--ytmd-font) !important; }
+::selection { background: var(--ytmd-accent); color: #fff; }
+
+#ytmd-ambient {
+  position: fixed; inset: -15%; z-index: -2; pointer-events: none;
+  background-size: cover; background-position: center;
+  filter: blur(60px) saturate(1.7) brightness(0.55);
+  opacity: 0.95;
+  transform: translateZ(0); will-change: transform; contain: strict;
+  transition: background-image 1.2s ease;
+}
+#ytmd-shade {
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(1200px 800px at 15% -10%, color-mix(in srgb, var(--ytmd-accent) 22%, transparent), transparent 60%),
+    radial-gradient(1000px 700px at 110% 110%, color-mix(in srgb, var(--ytmd-accent) 14%, transparent), transparent 60%),
+    linear-gradient(rgba(6, 6, 9, 0.30), rgba(6, 6, 9, 0.78));
+}
+
+/* --- Üst çubuk (aynı zamanda pencere başlığı) --- */
+#nav-bar-background {
+  background: var(--ytmd-glass) !important;
+  border-bottom: 1px solid var(--ytmd-border);
+}
+#nav-bar-divider { display: none !important; }
+
+ytmusic-nav-bar { -webkit-app-region: drag; }
+ytmusic-nav-bar #left-content > *,
+ytmusic-nav-bar #center-content > *,
+ytmusic-nav-bar #right-content > *,
+ytmusic-nav-bar a, ytmusic-nav-bar button, ytmusic-nav-bar input,
+ytmusic-nav-bar ytmusic-search-box, ytmusic-nav-bar yt-icon-button,
+ytmusic-nav-bar tp-yt-paper-icon-button { -webkit-app-region: no-drag; }
+/* sağ üstteki pencere tuşlarına yer aç */
+ytmusic-nav-bar #right-content { margin-right: 140px !important; }
+
+#ytmd-controls {
+  position: fixed; top: 0; right: 0; height: 40px; z-index: 2147483647;
+  display: flex; -webkit-app-region: no-drag;
+}
+#ytmd-controls button {
+  width: 46px; height: 40px; border: 0; background: transparent; color: rgba(255,255,255,.85);
+  display: grid; place-items: center; cursor: default; transition: background .15s;
+}
+#ytmd-controls button:hover { background: rgba(255, 255, 255, 0.10); }
+#ytmd-controls button.close:hover { background: #e81123; color: #fff; }
+
+/* Yüzen adanın altında kalan içeriği yumuşakça karart */
+#ytmd-fade {
+  position: fixed; left: 0; right: 0; bottom: 0; height: 120px; z-index: 2; pointer-events: none;
+  background: linear-gradient(transparent, rgba(6, 6, 9, 0.92) 70%);
+}
+
+#ytmd-drag {
+  position: fixed; top: 0; left: 0; right: 140px; height: 8px;
+  z-index: 2147483647; -webkit-app-region: drag;
+}
+
+/* Arama kutusu: görünüm sadece dış kutuya; iç katmanlar saydam (iç içe çerçeve olmasın) */
+ytmusic-search-box {
+  --ytmusic-search-background: transparent !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.07) !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  transition: background .15s, border-color .15s;
+}
+ytmusic-search-box .search-container,
+ytmusic-search-box #search-box,
+ytmusic-search-box .search-box,
+ytmusic-search-box #input-box {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+/* İçine tıklandığı / yazıldığı an (veya öneriler açıkken): her şey koyu ve OPAK.
+   YouTube'un kendi "açık" işaretine güvenmiyoruz; tarayıcının :focus-within kuralı kesin çalışır. */
+ytmusic-search-box:focus-within,
+ytmusic-search-box[opened],
+ytmusic-search-box:has(#suggestion-list > *),
+ytmusic-search-box:has(ytmusic-search-suggestions-section) {
+  --ytmusic-search-background: rgb(22, 22, 30) !important;
+  border-radius: 22px !important;
+  background: rgb(22, 22, 30) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65) !important;
+}
+ytmusic-search-box:focus-within *:not(input):not(yt-icon):not(svg):not(path):not(img),
+ytmusic-search-box:has(ytmusic-search-suggestions-section) *:not(input):not(yt-icon):not(svg):not(path):not(img) {
+  --ytmusic-search-background: rgb(22, 22, 30) !important;
+}
+ytmusic-search-box #suggestion-list,
+ytmusic-search-box tp-yt-paper-listbox,
+ytmusic-search-box ytmusic-search-suggestions-section {
+  background: rgb(22, 22, 30) !important;
+  opacity: 1 !important;
+}
+ytmusic-search-box:not(:focus-within):hover { background: rgba(255, 255, 255, 0.10) !important; }
+ytmusic-search-suggestion,
+ytmusic-search-suggestions-section ytmusic-responsive-list-item-renderer { border-radius: 10px; }
+
+/* --- Sol menü --- */
+#guide-wrapper, #mini-guide-background, #guide-spacer {
+  background: var(--ytmd-glass) !important;
+  border-right: 1px solid var(--ytmd-border) !important;
+}
+ytmusic-guide-entry-renderer tp-yt-paper-item {
+  border-radius: 12px !important;
+  transition: background .2s;
+}
+ytmusic-guide-entry-renderer tp-yt-paper-item:hover { background: var(--ytmd-hover) !important; }
+
+/* --- Kartlar (albüm, çalma listesi) --- */
+ytmusic-two-row-item-renderer { transition: transform .25s cubic-bezier(.2,.8,.2,1); }
+ytmusic-two-row-item-renderer:hover { transform: translateY(-4px); }
+ytmusic-two-row-item-renderer .image-wrapper {
+  border-radius: var(--ytmd-radius) !important;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  transition: box-shadow .25s;
+}
+ytmusic-two-row-item-renderer:hover .image-wrapper { box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55); }
+
+/* --- Şarkı satırları --- */
+ytmusic-responsive-list-item-renderer {
+  border-radius: 12px;
+  transition: background .2s;
+}
+ytmusic-responsive-list-item-renderer:hover { background: var(--ytmd-hover) !important; }
+/* Kapak kutusuna dokunma (oynat simgesi kaymasın); sadece resmi ve üstündeki katmanı yuvarla */
+ytmusic-responsive-list-item-renderer .left-items img,
+ytmusic-responsive-list-item-renderer ytmusic-item-thumbnail-overlay-renderer { border-radius: 8px; }
+
+/* Filtre çipleri */
+ytmusic-chip-cloud-chip-renderer a,
+ytmusic-chip-cloud-chip-renderer .gradient-box { border-radius: 999px !important; }
+
+/* --- Alt oynatıcı: yüzen ada --- */
+ytmusic-player-bar {
+  z-index: 10 !important;
+  left: 14px !important; right: 14px !important; bottom: 14px !important;
+  width: auto !important;
+  border-radius: 20px !important;
+  background: rgba(22, 22, 30, 0.86) !important;
+  border: 1px solid rgba(255, 255, 255, 0.09) !important;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+#player-bar-background { background: transparent !important; }
+ytmusic-player-bar #progress-bar {
+  left: 22px !important; right: 22px !important; width: auto !important;
+}
+ytmusic-player-bar .thumbnail-image-wrapper,
+ytmusic-player-bar img.image { border-radius: 10px !important; }
+
+/* Oynat tuşu: beyaz yuvarlak */
+ytmusic-player-bar #play-pause-button {
+  background: #fff !important; border-radius: 50% !important;
+  color: #0b0b0f !important;
+  --iron-icon-fill-color: #0b0b0f; --yt-icon-color: #0b0b0f;
+  transition: transform .15s ease;
+}
+ytmusic-player-bar #play-pause-button:hover { transform: scale(1.07); }
+ytmusic-player-bar #play-pause-button svg,
+ytmusic-player-bar #play-pause-button yt-icon { fill: #0b0b0f !important; color: #0b0b0f !important; }
+
+/* Kaydırırken içerik adanın altında kalmasın */
+ytmusic-app-layout #content, #contents.ytmusic-section-list-renderer { padding-bottom: 24px !important; }
+
+tp-yt-paper-slider#progress-bar,
+tp-yt-paper-slider#volume-slider,
+#progress-bar, #volume-slider {
+  --paper-slider-active-color: var(--ytmd-accent) !important;
+  --paper-slider-knob-color: var(--ytmd-accent) !important;
+  --paper-slider-knob-start-color: var(--ytmd-accent) !important;
+}
+
+/* ===== Çalma listesi / albüm sayfası: Spotify tarzı ===== */
+ytmusic-responsive-header-renderer {
+  border-radius: 26px !important;
+  padding: 26px 22px 22px !important;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ytmd-accent) 38%, transparent) 0%, color-mix(in srgb, var(--ytmd-accent) 10%, transparent) 55%, rgba(255, 255, 255, 0.03) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+}
+ytmusic-responsive-header-renderer ytmusic-thumbnail-renderer.thumbnail {
+  border-radius: 14px !important; overflow: hidden;
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.65);
+}
+ytmusic-responsive-header-renderer ytmusic-thumbnail-renderer.thumbnail img { border-radius: 14px !important; }
+ytmusic-responsive-header-renderer h1 .title {
+  font-size: 34px !important; font-weight: 800 !important; line-height: 1.12 !important; letter-spacing: -0.02em;
+}
+ytmusic-responsive-header-renderer .subtitle,
+ytmusic-responsive-header-renderer .second-subtitle,
+ytmusic-responsive-header-renderer .description { color: rgba(255, 255, 255, 0.72) !important; }
+
+/* Büyük oynat tuşu: vurgu renginde, Spotify gibi */
+ytmusic-responsive-header-renderer ytmusic-play-button-renderer {
+  background: var(--ytmd-accent) !important;
+  --ytmusic-play-button-icon-color: #0b0b0f;
+  color: #0b0b0f !important;
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--ytmd-accent) 45%, transparent);
+  transition: transform .15s ease, box-shadow .2s;
+}
+ytmusic-responsive-header-renderer ytmusic-play-button-renderer:hover {
+  transform: scale(1.06); box-shadow: 0 16px 40px color-mix(in srgb, var(--ytmd-accent) 60%, transparent);
+}
+ytmusic-responsive-header-renderer ytmusic-play-button-renderer yt-icon {
+  color: #0b0b0f !important; fill: #0b0b0f !important;
+}
+ytmusic-responsive-header-renderer #action-buttons ytmusic-toggle-button-renderer,
+ytmusic-responsive-header-renderer #action-buttons ytmusic-menu-renderer {
+  background: rgba(255, 255, 255, 0.08); border-radius: 50%;
+  transition: background .2s;
+}
+ytmusic-responsive-header-renderer #action-buttons ytmusic-toggle-button-renderer:hover,
+ytmusic-responsive-header-renderer #action-buttons ytmusic-menu-renderer:hover { background: rgba(255, 255, 255, 0.16); }
+
+/* Şarkı listesi: numaralı, temiz satırlar */
+ytmusic-playlist-shelf-renderer { counter-reset: ytmd-track; }
+ytmusic-playlist-shelf-renderer ytmusic-responsive-list-item-renderer {
+  counter-increment: ytmd-track;
+  position: relative;
+  padding-left: 46px !important;
+  border-radius: 10px !important;
+  border-bottom: 0 !important;
+  transition: background .15s;
+}
+ytmusic-playlist-shelf-renderer ytmusic-responsive-list-item-renderer::before {
+  content: counter(ytmd-track);
+  position: absolute; left: 6px; top: 50%; transform: translateY(-50%);
+  width: 28px; text-align: right;
+  font-size: 15px; font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.5);
+  pointer-events: none;
+}
+ytmusic-playlist-shelf-renderer ytmusic-responsive-list-item-renderer:hover { background: rgba(255, 255, 255, 0.08) !important; }
+ytmusic-playlist-shelf-renderer ytmusic-responsive-list-item-renderer:hover::before { color: #fff; }
+/* Çalan şarkı: vurgu renginde */
+ytmusic-responsive-list-item-renderer[play-button-state="playing"]::before,
+ytmusic-responsive-list-item-renderer[play-button-state="paused"]::before { content: "♫"; color: var(--ytmd-accent); }
+ytmusic-responsive-list-item-renderer[play-button-state="playing"] .title,
+ytmusic-responsive-list-item-renderer[play-button-state="paused"] .title { color: var(--ytmd-accent) !important; }
+ytmusic-playlist-shelf-renderer ytmusic-responsive-list-item-renderer .title { font-weight: 600 !important; }
+ytmusic-playlist-shelf-renderer ytmusic-responsive-list-item-renderer .secondary-flex-columns,
+ytmusic-playlist-shelf-renderer ytmusic-responsive-list-item-renderer .fixed-columns { color: rgba(255, 255, 255, 0.6) !important; }
+ytmusic-playlist-shelf-renderer ytmusic-responsive-list-item-renderer .left-items img { border-radius: 6px !important; }
+
+/* --- Şimdi çalıyor sayfası --- */
+ytmusic-player #song-image,
+ytmusic-player #song-image img {
+  border-radius: 18px !important;
+}
+ytmusic-player #song-image { box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6); overflow: hidden; }
+#side-panel, ytmusic-player-queue, tp-yt-paper-tabs { background: transparent !important; }
+
+/* --- Açılır menüler ve pencereler --- */
+ytmusic-menu-popup-renderer, ytmusic-multi-page-menu-renderer,
+tp-yt-paper-listbox, tp-yt-paper-dialog, ytmusic-dialog {
+  background: var(--ytmd-popup) !important;
+  backdrop-filter: blur(30px) saturate(1.5);
+  border: 1px solid var(--ytmd-border) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5) !important;
+}
+ytmusic-menu-popup-renderer tp-yt-paper-listbox,
+ytmusic-multi-page-menu-renderer tp-yt-paper-listbox { background: transparent !important; border: 0 !important; box-shadow: none !important; }
+ytmusic-menu-navigation-item-renderer, ytmusic-menu-service-item-renderer,
+ytmusic-toggle-menu-service-item-renderer { border-radius: 10px; margin: 0 6px; }
+
+/* --- İnce, modern kaydırma çubuğu ---
+   Yeni Chromium'da scrollbar-color varsa ::-webkit-scrollbar yok sayılıyor,
+   bu yüzden standart özellikleri kullanıyoruz. */
+html, body, * {
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent !important;
+}
+/* Yatay kaydırma çubuklarını gizle (çipler, karuseller – zaten ok tuşları var) */
+ytmusic-chip-cloud-renderer, ytmusic-chip-cloud-renderer *,
+ytmusic-carousel, ytmusic-carousel *, #items.ytmusic-carousel {
+  scrollbar-width: none !important;
+}
+ytmusic-chip-cloud-renderer ::-webkit-scrollbar,
+ytmusic-carousel ::-webkit-scrollbar { display: none !important; }
+
+/* ===================== Tema modları ===================== */
+/* AMOLED: saf siyah, kapak parıltısı yok */
+.ytmd-mode-amoled { --ytmd-glass: rgba(0, 0, 0, 0.92); --ytmd-popup: rgba(8, 8, 10, 0.97); }
+html.ytmd-mode-amoled { background: #000 !important; }
+.ytmd-mode-amoled #ytmd-ambient { display: none; }
+.ytmd-mode-amoled #ytmd-shade { background: #000; }
+.ytmd-mode-amoled ytmusic-player-bar { background: #000 !important; border-color: rgba(255, 255, 255, 0.12) !important; }
+.ytmd-mode-amoled #ytmd-fade { background: linear-gradient(transparent, #000 70%); }
+.ytmd-mode-amoled ytmusic-search-box:focus-within,
+.ytmd-mode-amoled ytmusic-search-box #suggestion-list { background: #0a0a0c !important; }
+.ytmd-mode-amoled ytmusic-responsive-header-renderer {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ytmd-accent) 22%, transparent), transparent 70%) !important;
+}
+
+/* Kapak renkli: arka plan kapaktan çok daha güçlü renk alır */
+.ytmd-mode-cover { --ytmd-glass: rgba(10, 10, 16, 0.38); }
+.ytmd-mode-cover #ytmd-ambient { filter: blur(70px) saturate(2) brightness(0.85); opacity: 1; }
+.ytmd-mode-cover #ytmd-shade {
+  background:
+    radial-gradient(1200px 800px at 15% -10%, color-mix(in srgb, var(--ytmd-accent) 35%, transparent), transparent 60%),
+    linear-gradient(rgba(6, 6, 9, 0.12), rgba(6, 6, 9, 0.55));
+}
+.ytmd-mode-cover ytmusic-player-bar { background: color-mix(in srgb, var(--ytmd-accent) 18%, rgba(14, 14, 20, 0.88)) !important; }
+
+/* ===================== Şarkı geçiş animasyonu ===================== */
+@keyframes ytmd-pop { 0% { transform: scale(.82); opacity: .2; } 60% { transform: scale(1.06); opacity: 1; } 100% { transform: scale(1); } }
+@keyframes ytmd-rise { from { transform: translateY(6px); opacity: 0; } to { transform: none; opacity: 1; } }
+.ytmd-anim.ytmd-track-change ytmusic-player-bar .thumbnail-image-wrapper,
+.ytmd-anim.ytmd-track-change ytmusic-player-bar img.image { animation: ytmd-pop .6s cubic-bezier(.2, .8, .2, 1); }
+.ytmd-anim.ytmd-track-change ytmusic-player-bar .content-info-wrapper { animation: ytmd-rise .45s ease; }
+.ytmd-anim #ytmd-ambient { transition: background-image 1.4s ease, filter .6s; }

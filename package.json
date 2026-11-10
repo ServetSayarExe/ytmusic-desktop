@@ -1,0 +1,70 @@
+{
+  "name": "ytmusic-desktop",
+  "productName": "YouTube Music Desktop",
+  "version": "1.5.0",
+  "description": "YouTube Music için basit masaüstü uygulaması",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8",
+    "rcedit": "^4.0.1"
+  },
+  "build": {
+    "appId": "com.local.ytmusicdesktop",
+    "productName": "YouTube Music Desktop",
+    "files": [
+      "main.js",
+      "preload.js",
+      "page.js",
+      "discord.js",
+      "theme.css",
+      "core.css",
+      "mini.html",
+      "settings.html",
+      "stats.html",
+      "icon.png",
+      "icon.ico",
+      "thumb-*.png"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false
+    },
+    "mac": {
+      "icon": "icon.png"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "icon.png"
+    },
+    "afterPack": "./afterPack.js",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "morg000",
+        "repo": "ytmusic-desktop",
+        "releaseType": "release"
+      }
+    ]
+  },
+  "author": "YouTube Music Desktop",
+  "dependencies": {
+    "electron-updater": "^6.3.9"
+  },
+  "repository": "https://github.com/morg000/ytmusic-desktop"
+}

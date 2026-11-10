@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+<title>Ayarlar</title>
+<style>
+  :root { --accent: #ff4d6d; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0d0d12; color: #f2f2f5; font: 14px/1.45 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; }
+  .wrap { display: grid; grid-template-columns: 200px 1fr; min-height: 100vh; }
+  nav { background: #09090d; border-right: 1px solid rgba(255,255,255,.06); padding: 26px 12px; position: sticky; top: 0; height: 100vh; }
+  nav h1 { font: 800 22px "Segoe UI Variable Display", "Segoe UI", sans-serif; margin: 0 12px 18px; }
+  nav a { display: block; padding: 9px 12px; border-radius: 10px; color: rgba(255,255,255,.75); text-decoration: none; cursor: pointer; font-weight: 600; }
+  nav a:hover { background: rgba(255,255,255,.06); color: #fff; }
+  nav a.on { background: color-mix(in srgb, var(--accent) 22%, transparent); color: #fff; }
+  main { padding: 26px 34px 60px; max-width: 760px; }
+  section { margin-bottom: 34px; scroll-margin-top: 20px; }
+  h2 { font: 800 20px "Segoe UI Variable Display", "Segoe UI", sans-serif; margin: 0 0 12px; }
+  .box { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07); border-radius: 16px; overflow: hidden; }
+  .item { display: flex; align-items: center; gap: 16px; padding: 14px 18px; border-top: 1px solid rgba(255,255,255,.05); }
+  .item:first-child { border-top: 0; }
+  .item .txt { flex: 1; }
+  .item .txt b { display: block; font-weight: 600; }
+  .item .txt span { color: rgba(255,255,255,.55); font-size: 13px; }
+  /* anahtar */
+  .sw { position: relative; width: 44px; height: 24px; flex: none; }
+  .sw input { opacity: 0; width: 0; height: 0; }
+  .sw i { position: absolute; inset: 0; border-radius: 24px; background: rgba(255,255,255,.18); transition: background .2s; cursor: pointer; }
+  .sw i::after { content: ""; position: absolute; left: 3px; top: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .2s; }
+  .sw input:checked + i { background: var(--accent); }
+  .sw input:checked + i::after { transform: translateX(20px); }
+  /* tema kartları */
+  .modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 16px 18px; }
+  .mode { border: 2px solid transparent; border-radius: 14px; padding: 10px; cursor: pointer; background: rgba(255,255,255,.04); text-align: center; font-weight: 600; }
+  .mode:hover { background: rgba(255,255,255,.07); }
+  .mode.on { border-color: var(--accent); }
+  .mode .pv { height: 70px; border-radius: 9px; margin-bottom: 8px; position: relative; overflow: hidden; }
+  .pv.dark { background: radial-gradient(circle at 20% 0%, color-mix(in srgb, var(--accent) 45%, transparent), transparent 60%), #14141b; }
+  .pv.amoled { background: #000; border: 1px solid rgba(255,255,255,.08); }
+  .pv.cover { background: linear-gradient(135deg, var(--accent), #6b2bd9 60%, #12121a); }
+  .pv::after { content: ""; position: absolute; left: 10%; right: 10%; bottom: 8px; height: 12px; border-radius: 6px; background: rgba(255,255,255,.18); }
+  /* ekolayzer */
+  .eq { display: flex; justify-content: space-around; gap: 10px; padding: 18px 18px 10px; }
+  .band { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 60px; }
+  .band input[type=range] { writing-mode: vertical-lr; direction: rtl; height: 140px; width: 28px; accent-color: var(--accent); cursor: pointer; }
+  .band .v { font-size: 12px; color: rgba(255,255,255,.7); font-variant-numeric: tabular-nums; }
+  .band .f { font-size: 12px; font-weight: 700; }
+  select, .btn {
+    background: rgba(255,255,255,.08); color: #fff; border: 1px solid rgba(255,255,255,.12); border-radius: 10px;
+    padding: 8px 12px; font: inherit; cursor: pointer;
+  }
+  select option { background: #1a1a22; }
+  .btn:hover { background: rgba(255,255,255,.14); }
+  .btn.primary { background: var(--accent); border-color: transparent; font-weight: 700; }
+  .btn.danger:hover { background: #b3261e; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { border-radius: 999px; padding: 7px 14px; }
+  .chip.on { background: var(--accent); border-color: transparent; }
+  .muted { color: rgba(255,255,255,.55); font-size: 13px; }
+  .eq.off { opacity: .4; pointer-events: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <h1>Ayarlar</h1>
+    <a data-go="gorunum" class="on">Görünüm</a>
+    <a data-go="ses">Ses ve ekolayzer</a>
+    <a data-go="uyku">Uyku zamanlayıcı</a>
+    <a data-go="baglantilar">Bağlantılar</a>
+    <a data-go="istatistik">İstatistikler</a>
+    <a data-go="hakkinda">Güncelleme</a>
+  </nav>
+  <main>
+    <section id="gorunum">
+      <h2>Görünüm</h2>
+      <div class="box">
+        <div class="modes" id="modes">
+          <div class="mode" data-mode="dark"><div class="pv dark"></div>Koyu</div>
+          <div class="mode" data-mode="amoled"><div class="pv amoled"></div>AMOLED siyah</div>
+          <div class="mode" data-mode="cover"><div class="pv cover"></div>Kapak renkli</div>
+        </div>
+        <div class="item"><div class="txt"><b>Şarkı geçiş animasyonları</b><span>Şarkı değişince renkler ve kapak yumuşakça geçer</span></div>
+          <label class="sw"><input type="checkbox" data-key="transitions"><i></i></label></div>
+        <div class="item"><div class="txt"><b>Modern arayüz</b><span>Kapatırsan YouTube Music'in orijinal görünümüne döner (uygulama yeniden başlar)</span></div>
+          <label class="sw"><input type="checkbox" data-key="theme"><i></i></label></div>
+      </div>
+    </section>
+
+    <section id="ses">
+      <h2>Ses ve ekolayzer</h2>
+      <div class="box">
+        <div class="item"><div class="txt"><b>Ekolayzer</b><span>Bas, orta ve tiz sesleri kendine göre ayarla</span></div>
+          <select id="preset"></select>
+          <label class="sw"><input type="checkbox" id="eqOn"><i></i></label></div>
+        <div class="eq" id="eq"></div>
+        <div class="item"><div class="txt"><b>Ses seviyesini eşitle</b><span>Şarkılar arasındaki ses farkını azaltır, ani yüksek sesleri yumuşatır</span></div>
+          <label class="sw"><input type="checkbox" data-key="normalize"><i></i></label></div>
+      </div>
+    </section>
+
+    <section id="uyku">
+      <h2>Uyku zamanlayıcı</h2>
+      <div class="box">
+        <div class="item"><div class="txt"><b id="sleepState">Kapalı</b><span>Süre dolunca müzik 20 saniyede yavaşça kısılır ve durur</span></div></div>
+        <div class="item"><div class="chips" id="sleepChips">
+          <button class="btn chip" data-sleep="15">15 dk</button>
+          <button class="btn chip" data-sleep="30">30 dk</button>
+          <button class="btn chip" data-sleep="45">45 dk</button>
+          <button class="btn chip" data-sleep="60">1 saat</button>
+          <button class="btn chip" data-sleep="90">1,5 saat</button>
+          <button class="btn chip" data-sleep="track">Bu şarkı bitince</button>
+          <button class="btn chip" data-sleep="off">Kapat</button>
+        </div></div>
+      </div>
+    </section>
+
+    <section id="baglantilar">
+      <h2>Bağlantılar</h2>
+      <div class="box">
+        <div class="item"><div class="txt"><b>Discord'da göster</b><span>Profilinde "YouTube Music dinliyor" görünür</span></div>
+          <label class="sw"><input type="checkbox" data-key="discord"><i></i></label></div>
+        <div class="item"><div class="txt"><b>Şarkı bildirimleri</b><span>Uygulama arka plandayken şarkı değişince küçük bildirim</span></div>
+          <label class="sw"><input type="checkbox" data-key="notifications"><i></i></label></div>
+      </div>
+    </section>
+
+    <section id="istatistik">
+      <h2>İstatistikler</h2>
+      <div class="box">
+        <div class="item"><div class="txt"><b>Dinlemeleri kaydet</b><span>Sadece bu bilgisayarda saklanır, hiçbir yere gönderilmez</span></div>
+          <label class="sw"><input type="checkbox" data-key="stats"><i></i></label></div>
+        <div class="item"><div class="txt"><b id="histCount">—</b><span>İstatistiklerini ve dinleme geçmişini gör</span></div>
+          <button class="btn primary" id="openStats">İstatistikleri aç</button>
+          <button class="btn danger" id="clearHist">Geçmişi sil</button></div>
+      </div>
+    </section>
+
+    <section id="hakkinda">
+      <h2>Güncelleme</h2>
+      <div class="box">
+        <div class="item"><div class="txt"><b id="ver">YouTube Music Desktop</b><span id="updState">—</span></div>
+          <button class="btn" id="checkUpd">Güncellemeleri denetle</button></div>
+      </div>
+    </section>
+  </main>
+</div>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const PRESETS = {
+    'Düz': [0, 0, 0, 0, 0], 'Bas güçlendirme': [7, 4, 0, 0, 1], 'Vokal': [-2, 0, 4, 3, 0],
+    'Tiz güçlendirme': [0, 0, 0, 3, 6], 'Elektronik': [5, 2, -1, 2, 5], 'Rock': [4, 2, -2, 2, 4],
+    'Akustik': [3, 1, 2, 2, 3], 'Rap / Hip-hop': [6, 3, 0, 1, 2]
+  };
+  const FREQS = ['60 Hz', '230 Hz', '910 Hz', '3.6 kHz', '14 kHz'];
+  let S = {};
+  const set = (k, v) => { S[k] = v; window.ytmd.setSetting(k, v); };
+
+  // menü
+  document.querySelectorAll('nav a').forEach((a) => a.onclick = () => {
+    $(a.dataset.go).scrollIntoView({ behavior: 'smooth' });
+    document.querySelectorAll('nav a').forEach((x) => x.classList.toggle('on', x === a));
+  });
+
+  // ekolayzer arayüzü
+  Object.keys(PRESETS).forEach((n) => $('preset').append(new Option(n, n)));
+  $('preset').append(new Option('Özel', 'Özel'));
+  const sliders = FREQS.map((f, i) => {
+    const v = document.createElement('div'); v.className = 'v';
+    const r = document.createElement('input'); r.type = 'range'; r.min = -12; r.max = 12; r.step = 1;
+    r.oninput = () => { v.textContent = (r.value > 0 ? '+' : '') + r.value + ' dB'; };
+    r.onchange = () => { const bands = sliders.map((s) => +s.r.value); $('preset').value = 'Özel'; set('eq', { ...S.eq, bands, preset: 'Özel' }); };
+    const lab = document.createElement('div'); lab.className = 'f'; lab.textContent = f;
+    const box = document.createElement('div'); box.className = 'band'; box.append(v, r, lab); $('eq').append(box);
+    return { r, v };
+  });
+  function showBands(b) { sliders.forEach((s, i) => { s.r.value = b[i] || 0; s.r.oninput(); }); }
+  $('preset').onchange = () => {
+    const p = $('preset').value; if (!PRESETS[p]) return;
+    showBands(PRESETS[p]); set('eq', { ...S.eq, bands: PRESETS[p].slice(), preset: p });
+  };
+  $('eqOn').onchange = () => { set('eq', { ...S.eq, enabled: $('eqOn').checked }); $('eq').classList.toggle('off', !$('eqOn').checked); };
+
+  // temalar
+  document.querySelectorAll('.mode').forEach((m) => m.onclick = () => {
+    set('themeMode', m.dataset.mode);
+    document.querySelectorAll('.mode').forEach((x) => x.classList.toggle('on', x === m));
+  });
+
+  // anahtarlar
+  document.querySelectorAll('input[data-key]').forEach((c) => c.onchange = () => set(c.dataset.key, c.checked));
+
+  // uyku
+  document.querySelectorAll('[data-sleep]').forEach((b) => b.onclick = () => window.ytmd.setSleep(b.dataset.sleep));
+  async function refreshSleep() {
+    const s = await window.ytmd.getSleep();
+    let txt = 'Kapalı';
+    if (s.mode === 'timer') { const m = Math.max(0, Math.ceil((s.until - Date.now()) / 60000)); txt = `Açık — ${m} dakika sonra duracak`; }
+    if (s.mode === 'track') txt = 'Açık — bu şarkı bitince duracak';
+    $('sleepState').textContent = txt;
+  }
+  setInterval(refreshSleep, 5000);
+
+  // istatistik
+  $('openStats').onclick = () => window.ytmd.openStats();
+  $('clearHist').onclick = async () => {
+    if (!confirm('Tüm dinleme geçmişi silinsin mi? Bu geri alınamaz.')) return;
+    await window.ytmd.clearHistory(); refreshCount();
+  };
+  async function refreshCount() { const n = await window.ytmd.historyCount(); $('histCount').textContent = `${n} dinleme kayıtlı`; }
+
+  // güncelleme
+  $('checkUpd').onclick = async () => { $('updState').textContent = 'Denetleniyor…'; $('updState').textContent = await window.ytmd.checkUpdates(); };
+
+  window.ytmd.getSettings().then((s) => {
+    S = s;
+    if (s.accent) document.documentElement.style.setProperty('--accent', s.accent);
+    document.querySelectorAll('input[data-key]').forEach((c) => { c.checked = !!s[c.dataset.key]; });
+    document.querySelectorAll('.mode').forEach((m) => m.classList.toggle('on', m.dataset.mode === (s.themeMode || 'dark')));
+    $('eqOn').checked = !!(s.eq && s.eq.enabled); $('eq').classList.toggle('off', !$('eqOn').checked);
+    $('preset').value = (s.eq && s.eq.preset) || 'Düz';
+    showBands((s.eq && s.eq.bands) || [0, 0, 0, 0, 0]);
+    $('ver').textContent = 'YouTube Music Desktop ' + (s.version || '');
+    $('updState').textContent = s.updateState || '';
+    refreshSleep(); refreshCount();
+  });
+</script>
+</body>
+</html>
