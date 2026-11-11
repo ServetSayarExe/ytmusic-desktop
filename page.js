@@ -930,6 +930,7 @@
   // ---------------- Sol menü genişliği (sürükleyerek) ----------------
   if (THEME) {
     const GMIN = 240, GMAX = 420;
+    let gmin = GMIN;   // imza ölçülünce büyür: iki satırlık imza kitaplığa sığsın
     let gw = GMIN; try { gw = Math.max(GMIN, Math.min(GMAX, parseInt(localStorage.getItem('ytmd-guide-w'), 10) || GMIN)); } catch (e) {}
     const handle = el('div', { id: 'ytmd-guide-handle', title: 'Sürükleyerek kitaplığı genişlet (çift tık: sıfırla)' });
     root.appendChild(handle);
@@ -957,13 +958,19 @@
     handle.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, w: gw }; handle.setPointerCapture(e.pointerId); root.classList.add('ytmd-guide-drag'); e.preventDefault(); });
     handle.addEventListener('pointermove', (e) => {
       if (!drag) return;
-      gw = Math.max(GMIN, Math.min(GMAX, Math.round(drag.w + e.clientX - drag.x)));
+      gw = Math.max(gmin, Math.min(GMAX, Math.round(drag.w + e.clientX - drag.x)));
       root.style.setProperty('--ytmd-guide-w', gw + 'px');
       window.__ytmdCredit && window.__ytmdCredit();
     });
     const end = () => { if (!drag) return; drag = null; root.classList.remove('ytmd-guide-drag'); try { localStorage.setItem('ytmd-guide-w', String(gw)); } catch (e) {} mountCreditSoon(); };
     handle.addEventListener('pointerup', end); handle.addEventListener('pointercancel', end); handle.addEventListener('lostpointercapture', end);
-    handle.addEventListener('dblclick', () => { gw = GMIN; root.style.setProperty('--ytmd-guide-w', gw + 'px'); try { localStorage.setItem('ytmd-guide-w', String(gw)); } catch (e) {} mountCreditSoon(); });
+    handle.addEventListener('dblclick', () => { gw = gmin; root.style.setProperty('--ytmd-guide-w', gw + 'px'); try { localStorage.setItem('ytmd-guide-w', String(gw)); } catch (e) {} mountCreditSoon(); });
+    window.__ytmdGuideMin = (m) => {
+      const n = Math.max(GMIN, Math.min(GMAX, Math.ceil(m)));
+      if (n === gmin) return;
+      gmin = n;
+      if (gw < gmin) { gw = gmin; root.style.setProperty('--ytmd-guide-w', gw + 'px'); }
+    };
     function mountCreditSoon() { setTimeout(() => window.__ytmdCredit && window.__ytmdCredit(), 200); }
   }
 
@@ -987,11 +994,13 @@
       creditW.inline = byW + 4 + aW; creditW.stack = Math.max(byW, aW);
       credit.style.setProperty('--cr-bw', byW + 'px');
       credit.style.width = creditW.inline + 'px';
+      // Kitaplığın en dar hali, iki satırlık imzayı (soldan 150 px + genişliği + pay) tamamen kapsasın
+      window.__ytmdGuideMin && window.__ytmdGuideMin(150 + creditW.stack + 12);
     }
     const sb = nav.querySelector('ytmusic-search-box');
     const room = sb ? sb.getBoundingClientRect().left - 150 - 14 : 9999;
     // Kitaplık dar haldeyken (300 pikselin altı) her zaman iki satır
-    const narrowGuide = root.classList.contains('ytmd-guide-wide') && (parseInt(root.style.getPropertyValue('--ytmd-guide-w'), 10) || 240) < 300;
+    const narrowGuide = root.classList.contains('ytmd-guide-wide') && (parseInt(root.style.getPropertyValue('--ytmd-guide-w'), 10) || 240) < Math.max(300, 150 + creditW.inline + 12);
     const mode = room < creditW.stack ? 'hide' : (narrowGuide || room < creditW.inline) ? 'stack' : 'inline';
     credit.classList.toggle('ytmd-stack', mode === 'stack');
     credit.classList.toggle('ytmd-hide', mode === 'hide');
