@@ -126,6 +126,7 @@
   const trackListeners = [];
   function tickNowPlaying() {
     const np = readNowPlaying();
+    root.classList.toggle('ytmd-has-track', !!np);
     if (!np) return;
     current = np;
     const track = np.videoId || np.title + '|' + np.artist;
@@ -573,6 +574,8 @@
           render(); load(k);
         }
       })));
+      // Fare tekerleğiyle çipleri yana kaydır
+      chips.addEventListener('wheel', (e) => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { chips.scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
       searchInput = el('input', { class: 'ytmd-lib-search', placeholder: 'Kitaplıkta ara', oninput: () => { query = searchInput.value.trim(); render(); } });
       const searchBtn = el('button', { class: 'ytmd-lib-icon', title: 'Ara', onclick: () => { panel.classList.toggle('searching'); if (panel.classList.contains('searching')) searchInput.focus(); else { searchInput.value = ''; query = ''; render(); } } },
         [svgIcon('0 0 24 24', ['M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14z', 'M20 20l-4-4'], { size: 16, width: 2 })]);
@@ -923,6 +926,64 @@
   };
   // Yeni şarkıda YouTube kaliteyi sıfırlayabilir: gizliyken tekrar düşür
   trackListeners.push(() => { if (lowPower) { lowPower = false; window.__ytmdLowPower(true); } });
+
+  // ---------------- Sol menü genişliği (sürükleyerek) ----------------
+  if (THEME) {
+    const GMIN = 240, GMAX = 420;
+    let gw = GMIN; try { gw = Math.max(GMIN, Math.min(GMAX, parseInt(localStorage.getItem('ytmd-guide-w'), 10) || GMIN)); } catch (e) {}
+    const handle = el('div', { id: 'ytmd-guide-handle', title: 'Sürükleyerek kitaplığı genişlet (çift tık: sıfırla)' });
+    root.appendChild(handle);
+    root.style.setProperty('--ytmd-guide-w', gw + 'px');
+    // YouTube'un kendi genişliğine bak: menü açıksa (240) bizim genişliğimizi uygula, kapalıysa (72) dokunma
+    function applyGuide() {
+      const lay = document.querySelector('ytmusic-app-layout');
+      if (!lay) return;
+      root.classList.remove('ytmd-guide-wide');
+      const natural = parseInt(getComputedStyle(lay).getPropertyValue('--ytmusic-guide-width'), 10) || 0;
+      root.classList.toggle('ytmd-guide-wide', natural >= GMIN);
+      setTimeout(() => window.__ytmdCredit && window.__ytmdCredit(), 350);
+    }
+    let watched = null;
+    function watch() {
+      const app = document.querySelector('ytmusic-app');
+      if (!app || app === watched) return;
+      watched = app;
+      new MutationObserver(applyGuide).observe(app, { attributes: true, attributeFilter: ['guide-collapsed'] });
+      applyGuide();
+    }
+    watch(); setInterval(watch, 5000);
+    window.addEventListener('resize', () => { clearTimeout(watch.t); watch.t = setTimeout(applyGuide, 250); });
+    let drag = null;
+    handle.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, w: gw }; handle.setPointerCapture(e.pointerId); root.classList.add('ytmd-guide-drag'); e.preventDefault(); });
+    handle.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      gw = Math.max(GMIN, Math.min(GMAX, Math.round(drag.w + e.clientX - drag.x)));
+      root.style.setProperty('--ytmd-guide-w', gw + 'px');
+    });
+    const end = () => { if (!drag) return; drag = null; root.classList.remove('ytmd-guide-drag'); try { localStorage.setItem('ytmd-guide-w', String(gw)); } catch (e) {} mountCreditSoon(); };
+    handle.addEventListener('pointerup', end); handle.addEventListener('pointercancel', end); handle.addEventListener('lostpointercapture', end);
+    handle.addEventListener('dblclick', () => { gw = GMIN; root.style.setProperty('--ytmd-guide-w', gw + 'px'); try { localStorage.setItem('ytmd-guide-w', String(gw)); } catch (e) {} mountCreditSoon(); });
+    function mountCreditSoon() { setTimeout(() => window.__ytmdCredit && window.__ytmdCredit(), 200); }
+  }
+
+  // ---------------- İmza: "Made by @servetsayarexe" ----------------
+  const CREDIT_URL = 'https://www.instagram.com/servetsayarexe';
+  const credit = el('div', { id: 'ytmd-credit' }, [
+    document.createTextNode('Made by '),
+    el('a', { href: CREDIT_URL, target: '_blank', rel: 'noopener', title: 'Instagram: @servetsayarexe', onclick: (e) => { e.preventDefault(); e.stopPropagation(); window.open(CREDIT_URL, '_blank'); } }, [document.createTextNode('@servetsayarexe')])
+  ]);
+  function mountCredit() {
+    const nav = document.querySelector('ytmusic-nav-bar');
+    if (!nav) return;
+    if (credit.parentElement !== nav) nav.appendChild(credit);
+    // Arama kutusu sola kaydıysa (menü kapalı / dar pencere) üstüne binmesin
+    const sb = nav.querySelector('ytmusic-search-box');
+    const fits = !sb || sb.getBoundingClientRect().left >= 150 + (credit.offsetWidth || 145) + 14;
+    credit.classList.toggle('ytmd-hide', !fits);
+  }
+  window.__ytmdCredit = mountCredit;
+  mountCredit(); setInterval(() => { if (!document.hidden) mountCredit(); }, 2000);
+  window.addEventListener('resize', () => setTimeout(mountCredit, 300));
 
   // ---------------- Güncelleme kartı ----------------
   const updTitle = el('div', { class: 'ytmd-upd-title' });
