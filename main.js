@@ -12,6 +12,7 @@ const YTM_URL = 'https://music.youtube.com';
 const APP_ID = 'com.local.ytmusicdesktop';
 // Discord uygulama kimliği (herkese açık bir numara, gizli değil). Uygulamaya gömülü.
 const DISCORD_CLIENT_ID = '1569795567800950804';
+const DOWNLOAD_URL = 'https://github.com/ServetSayarExe/ytmusic-desktop/releases/latest/download/YouTube-Music-Desktop-Setup.exe';
 
 // ---------------- Kimlik (User-Agent) ----------------
 // YouTube Music: gerçek Chrome kimliği. Google girişi: Firefox kimliği (Electron engelini aşmak için).
@@ -287,7 +288,10 @@ function updateDiscord() {
     const r = np.rate || 1, start = Date.now() - np.currentTime / r * 1000;
     a.timestamps = { start: Math.round(start), end: Math.round(start + np.duration / r * 1000) };
   }
-  if (np.videoId) a.buttons = [{ label: "YouTube Music'te dinle", url: `https://music.youtube.com/watch?v=${np.videoId}` }];
+  a.buttons = [];
+  if (np.videoId) a.buttons.push({ label: "YouTube Music'te dinle", url: `https://music.youtube.com/watch?v=${np.videoId}` });
+  // Tıklayan arkadaşın tarayıcısı her zaman en son kurulum dosyasını indirir
+  a.buttons.push({ label: 'Uygulamayı indir', url: DOWNLOAD_URL });
   discord.setActivity(a);
 }
 const applyDiscordSettings = () => discord.configure(settings.discordClientId || DISCORD_CLIENT_ID, settings.discord);
