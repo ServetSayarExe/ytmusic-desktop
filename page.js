@@ -964,10 +964,13 @@
     watch(); bootFns.push(watch); setInterval(watch, 5000);
     window.addEventListener('resize', () => { clearTimeout(watch.t); watch.t = setTimeout(applyGuide, 250); });
     let drag = null;
-    // Sürüklerken: sadece kitaplık genişler (karede bir kez), sağdaki içerik bırakınca tek seferde yerleşir
+    // Sürüklerken: kitaplık karede bir kez genişler; sağdaki içerik yeniden dizilmeden (ekran kartıyla) yanına kayar,
+    // bırakınca kartlar tek seferde yeni genişliğe göre dizilir
     let dragRaf = 0;
+    const contentEl = () => document.querySelector('ytmusic-app-layout > #content');
     handle.addEventListener('pointerdown', (e) => {
-      drag = { x: e.clientX, w: gw }; handle.setPointerCapture(e.pointerId);
+      drag = { x: e.clientX, w: gw, el: contentEl() }; handle.setPointerCapture(e.pointerId);
+      if (drag.el) drag.el.style.willChange = 'transform';
       root.style.setProperty('--ytmd-content-w', gw + 'px');
       root.classList.add('ytmd-guide-drag'); e.preventDefault();
     });
@@ -978,11 +981,16 @@
       dragRaf = requestAnimationFrame(() => {
         dragRaf = 0; if (!drag) return;
         const n = Math.max(gmin, Math.min(GMAX, Math.round(drag.w + drag.cx - drag.x)));
-        if (n !== gw) { gw = n; root.style.setProperty('--ytmd-guide-w', gw + 'px'); }
+        if (n !== gw) {
+          gw = n; root.style.setProperty('--ytmd-guide-w', gw + 'px');
+          if (drag.el) drag.el.style.transform = 'translate3d(' + (gw - drag.w) + 'px,0,0)';
+        }
       });
     });
     const end = () => {
-      if (!drag) return; drag = null; cancelAnimationFrame(dragRaf); dragRaf = 0;
+      if (!drag) return;
+      if (drag.el) { drag.el.style.transform = ''; drag.el.style.willChange = ''; }
+      drag = null; cancelAnimationFrame(dragRaf); dragRaf = 0;
       root.style.removeProperty('--ytmd-content-w');
       root.classList.remove('ytmd-guide-drag');
       try { localStorage.setItem('ytmd-guide-w', String(gw)); } catch (e) {}
