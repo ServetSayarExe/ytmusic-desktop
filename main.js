@@ -67,7 +67,7 @@ const DEFAULTS = {
   eq: { enabled: false, preset: 'Düz', bands: [0, 0, 0, 0, 0] }, normalize: false,
   stats: true, miniBounds: null,
   crossfade: 0, speed: 1, outputDevice: '', taskbarProgress: true, homeHero: true, dailyGoal: 30, boost: 100, closeToTray: true,
-  gameAuto: false, remote: false, partyName: '', partyRelay: 'https://ntfy.sh'
+  gameAuto: false, remote: false, partyName: '', partyRelay: 'https://ntfy.sh', adSkip: true
 };
 const settings = readJSON(settingsFile, DEFAULTS);
 const saveSettings = () => { try { fs.writeFileSync(settingsFile, JSON.stringify(settings)); } catch {} };
@@ -376,7 +376,7 @@ async function translateLines(lines) {
 // ---------------- Sayfa ayarları ----------------
 const pageSettings = () => ({
   themeMode: settings.themeMode, transitions: settings.transitions, eq: settings.eq, normalize: settings.normalize,
-  crossfade: settings.crossfade, speed: settings.speed, outputDevice: settings.outputDevice, homeHero: settings.homeHero, boost: settings.boost
+  crossfade: settings.crossfade, speed: settings.speed, outputDevice: settings.outputDevice, homeHero: settings.homeHero, boost: settings.boost, adSkip: settings.adSkip !== false
 });
 const pushPageSettings = () => pageJS(`window.__ytmdApply && window.__ytmdApply(${JSON.stringify(pageSettings())})`);
 
@@ -385,7 +385,7 @@ function setSetting(key, value) {
   switch (key) {
     case 'theme': settings.theme = bool(value); saveSettings(); quitting = true; app.relaunch(); app.quit(); return;
     case 'themeMode': if (!['dark', 'amoled', 'cover'].includes(value)) return; settings.themeMode = value; break;
-    case 'transitions': case 'normalize': case 'notifications': case 'stats': case 'homeHero': case 'closeToTray': settings[key] = bool(value); break;
+    case 'transitions': case 'normalize': case 'notifications': case 'stats': case 'homeHero': case 'closeToTray': case 'adSkip': settings[key] = bool(value); break;
     case 'taskbarProgress': settings.taskbarProgress = bool(value); if (!settings.taskbarProgress && win) win.setProgressBar(-1); lastProg = null; break;
     case 'crossfade': { const n = Math.round(+value); if (!(n >= 0 && n <= 12)) return; settings.crossfade = n; break; }
     case 'speed': { const n = +value; if (![0.75, 0.9, 1, 1.1, 1.25, 1.5].includes(n)) return; settings.speed = n; break; }
