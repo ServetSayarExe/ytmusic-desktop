@@ -314,7 +314,7 @@ ytmusic-responsive-list-item-renderer ytmusic-item-thumbnail-overlay-renderer yt
 #ytmd-credit.ytmd-hide { visibility: hidden; }
 /* İki parça ayrı konumlanır; tek satır <-> iki satır geçişi kayarak (animasyonlu) olur */
 #ytmd-credit { height: 34px; line-height: 1.2; pointer-events: none; transition: opacity .25s ease; }
-#ytmd-credit.ytmd-hide { opacity: 0; }
+#ytmd-credit.ytmd-hide { opacity: 0; transition: none; }   /* gizlenirken animasyon yok, anında gider */
 #ytmd-credit .ytmd-cr-by, #ytmd-credit a {
   position: absolute; left: 0; top: 50%; white-space: nowrap; transform-origin: left center;
   transition: transform .45s cubic-bezier(.2, .8, .2, 1), font-size .45s cubic-bezier(.2, .8, .2, 1);
