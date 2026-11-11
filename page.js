@@ -942,7 +942,9 @@
       root.classList.remove('ytmd-guide-wide');
       const natural = parseInt(getComputedStyle(lay).getPropertyValue('--ytmusic-guide-width'), 10) || 0;
       root.classList.toggle('ytmd-guide-wide', natural >= GMIN);
-      setTimeout(() => window.__ytmdCredit && window.__ytmdCredit(), 350);
+      // Kapanırken imza beklemeden gitsin; açılırken menü yerleşince gelsin
+      if (natural >= GMIN) setTimeout(() => window.__ytmdCredit && window.__ytmdCredit(), 350);
+      else window.__ytmdCredit && window.__ytmdCredit();
     }
     let watched = null;
     function watch() {
@@ -997,6 +999,8 @@
       // Kitaplığın en dar hali, iki satırlık imzayı (soldan 150 px + genişliği + pay) tamamen kapsasın
       window.__ytmdGuideMin && window.__ytmdGuideMin(150 + creditW.stack + 12);
     }
+    // Tema açıkken kitaplık kapalıysa imzaya yer yok: hemen gizle (arama kutusunun kaymasını bekleme)
+    if (THEME && !root.classList.contains('ytmd-guide-wide')) { credit.classList.add('ytmd-hide'); return; }
     const sb = nav.querySelector('ytmusic-search-box');
     const room = sb ? sb.getBoundingClientRect().left - 150 - 14 : 9999;
     // Kitaplık dar haldeyken (300 pikselin altı) her zaman iki satır
