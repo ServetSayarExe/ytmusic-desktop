@@ -871,6 +871,28 @@
     trackListeners.push(() => setTimeout(() => HOME.refresh(), 40000));
   }
 
+  // ---------------- Ses yüzdesi (sağ alttaki ses kaydırıcısının yanında) ----------------
+  const volEl = el('span', { id: 'ytmd-vol', title: 'Ses seviyesi' });
+  let volLast = '';
+  function tickVolume() {
+    // Sayfada birden çok oynatıcı çubuğu olabiliyor: görünür olanı seç
+    const bar = [...document.querySelectorAll('ytmusic-player-bar #right-controls .right-controls-buttons')].find((b) => b.offsetWidth > 0);
+    if (!bar) return;
+    if (volEl.parentElement !== bar) bar.insertBefore(volEl, bar.firstChild);
+    let v = 0, muted = false;
+    try { const p = player(); v = Math.round(p.getVolume()); muted = p.isMuted(); } catch (e) { const vd = video(); if (vd) { v = Math.round(vd.volume * 100); muted = vd.muted; } }
+    const boost = Math.round(audio.boost * 100);
+    const key = v + '|' + muted + '|' + boost;
+    if (key === volLast) return;
+    volLast = key;
+    volEl.classList.toggle('muted', muted || v === 0);
+    volEl.replaceChildren(document.createTextNode(muted ? 'Sessiz' : '%' + v),
+      !muted && boost > 100 ? el('small', { text: ' ×' + (boost / 100).toString().replace('.', ',') }) : null);
+    volEl.title = muted ? 'Ses kapalı' : 'Ses seviyesi: %' + v + (boost > 100 ? ' (yükseltme %' + boost + ')' : '');
+  }
+  setInterval(() => { if (!document.hidden) tickVolume(); }, 250);
+  document.addEventListener('volumechange', () => tickVolume(), true);
+
   // ---------------- Güncelleme kartı ----------------
   const updTitle = el('div', { class: 'ytmd-upd-title' });
   const updNotes = el('div', { class: 'ytmd-upd-notes' });
