@@ -312,3 +312,5 @@ ytmusic-responsive-list-item-renderer ytmusic-item-thumbnail-overlay-renderer yt
 #ytmd-credit a { color: rgba(255, 255, 255, 0.85); text-decoration: none; font-weight: 600; cursor: pointer; -webkit-app-region: no-drag; }
 #ytmd-credit a:hover { color: var(--ytmd-accent); text-decoration: underline; }
 #ytmd-credit.ytmd-hide { visibility: hidden; }
+#ytmd-credit.ytmd-stack { display: flex; flex-direction: column; line-height: 1.2; font-size: 11px; }
+#ytmd-credit.ytmd-stack a { font-size: 12px; }
