@@ -28,6 +28,9 @@ app.commandLine.appendSwitch('enable-gpu-rasterization');
 app.commandLine.appendSwitch('enable-zero-copy');
 app.commandLine.appendSwitch('ignore-gpu-blocklist');
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+// Bellek: yedekte bekleyen boş işlemi ve kullanılmayan Chromium servislerini kapat
+app.commandLine.appendSwitch('disable-features', 'SpareRendererForSitePerProcess,MediaRouter,DialMediaRouteProvider,OptimizationHints,Translate,AutofillServerCommunication');
+app.commandLine.appendSwitch('js-flags', '--expose-gc');
 
 // Reklam/izleyici istekleri (müzik çalmayı ve dinleme geçmişini ETKİLEMEYENLER)
 const BLOCK_URLS = [
@@ -321,6 +324,7 @@ async function findLyrics({ title, artist, album, duration }) {
     const list = await lrclib('search?' + qs({ q: `${t} ${a}` }));
     if (Array.isArray(list) && list.length) out = pick(list.find((r) => r.syncedLyrics) || list[0]);
   }
+  if (lyricsCache.size > 300) lyricsCache.clear();
   lyricsCache.set(key, out);
   return out;
 }
@@ -454,6 +458,12 @@ function createWindow() {
   win.webContents.on('will-navigate', (e, url) => { if (!isInternal(url)) { e.preventDefault(); shell.openExternal(url); } });
 
   win.on('show', () => setTimeout(updateThumbar, 300));
+  // Pencere görünmüyorken video kalitesini düşür, belleği boşalt
+  const lowPower = (on) => pageJS(`window.__ytmdLowPower && window.__ytmdLowPower(${on ? 'true' : 'false'})`);
+  win.on('hide', () => lowPower(true));
+  win.on('minimize', () => lowPower(true));
+  win.on('show', () => lowPower(false));
+  win.on('restore', () => lowPower(false));
   win.on('leave-full-screen', () => pageJS('window.__ytmdFull && window.__ytmdFull(false)'));
   win.on('close', (e) => { saveState(); if (!quitting) { e.preventDefault(); if (win.isFullScreen()) win.setFullScreen(false); win.hide(); } });
   win.on('resized', saveState);
