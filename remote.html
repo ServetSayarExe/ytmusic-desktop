@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'">
+<meta name="theme-color" content="#0b0b10">
+<meta name="referrer" content="no-referrer">
+<title>Kumanda · YouTube Music</title>
+<style>
+  :root { --accent: #ff4d6d; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: #0b0b10; color: #f4f4f7; font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overscroll-behavior: none; }
+  body { display: flex; flex-direction: column; min-height: 100%; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+  #bg { position: fixed; inset: -20%; background-size: cover; background-position: center; filter: blur(60px) saturate(1.4); opacity: .45; z-index: -1; transition: background-image .6s; }
+  #bg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(11,11,16,.35), #0b0b10 75%); }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px 0; font-size: 13px; color: rgba(255,255,255,.65); }
+  header .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #f5b942; margin-right: 6px; vertical-align: middle; }
+  header .dot.on { background: #3ddc84; }
+  .badge { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: rgba(255,255,255,.1); margin-left: 6px; }
+  main { padding: 18px 24px 8px; display: flex; flex-direction: column; align-items: center; }
+  #art { width: min(78vw, 360px); aspect-ratio: 1; border-radius: 18px; background: #1b1b24 center/cover; box-shadow: 0 20px 60px rgba(0,0,0,.55); }
+  .meta { width: min(78vw, 360px); margin-top: 22px; display: flex; align-items: center; gap: 12px; }
+  .meta .t { flex: 1; min-width: 0; }
+  #title { font-size: 21px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #artist { color: rgba(255,255,255,.65); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ib { background: none; border: 0; color: #fff; padding: 8px; border-radius: 50%; display: grid; place-items: center; cursor: pointer; opacity: .85; }
+  .ib:active { transform: scale(.92); }
+  .ib.on { color: var(--accent); opacity: 1; }
+  .ib svg { width: 26px; height: 26px; }
+  .prog { width: min(78vw, 360px); margin-top: 16px; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 28px; background: transparent; margin: 0; touch-action: none; }
+  input[type=range]::-webkit-slider-runnable-track { height: 5px; border-radius: 5px; background: linear-gradient(90deg, var(--accent) var(--p, 0%), rgba(255,255,255,.18) var(--p, 0%)); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #fff; margin-top: -5.5px; }
+  input[type=range]::-moz-range-track { height: 5px; border-radius: 5px; background: rgba(255,255,255,.18); }
+  input[type=range]::-moz-range-progress { height: 5px; border-radius: 5px; background: var(--accent); }
+  input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border: 0; border-radius: 50%; background: #fff; }
+  .times { display: flex; justify-content: space-between; font-size: 12px; color: rgba(255,255,255,.55); font-variant-numeric: tabular-nums; margin-top: -2px; }
+  .ctrls { display: flex; align-items: center; justify-content: space-between; width: min(78vw, 360px); margin-top: 10px; }
+  .ctrls .big { width: 74px; height: 74px; border-radius: 50%; background: #fff; color: #0b0b10; opacity: 1; }
+  .ctrls .big svg { width: 34px; height: 34px; }
+  .ctrls .mid svg { width: 36px; height: 36px; }
+  .vol { display: flex; align-items: center; gap: 10px; width: min(78vw, 360px); margin-top: 14px; }
+  .vol span { font-size: 12px; width: 38px; text-align: right; color: rgba(255,255,255,.6); font-variant-numeric: tabular-nums; }
+  section { padding: 8px 16px 30px; }
+  section h3 { margin: 14px 8px 8px; font-size: 16px; }
+  .row { display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: 12px; }
+  .row:active { background: rgba(255,255,255,.08); }
+  .row img, .row .ph { width: 46px; height: 46px; border-radius: 8px; object-fit: cover; background: #1b1b24; flex: none; }
+  .row .m { flex: 1; min-width: 0; }
+  .row b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row small { color: rgba(255,255,255,.55); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+  .row .len { font-size: 12px; color: rgba(255,255,255,.5); }
+  .sub { margin: 10px 8px 4px; font-size: 12px; color: rgba(255,255,255,.45); text-transform: uppercase; letter-spacing: .05em; }
+  #empty { padding: 60px 24px; text-align: center; color: rgba(255,255,255,.6); display: none; }
+</style>
+</head>
+<body>
+<div id="bg"></div>
+<header><div><span class="dot" id="dot"></span><span id="conn">Bağlanıyor…</span></div><div id="badges"></div></header>
+<div id="empty">Bilgisayarda şu an çalan bir şarkı yok.<br>YouTube Music'te bir şarkı başlat.</div>
+<main id="player">
+  <div id="art"></div>
+  <div class="meta">
+    <button class="ib" id="dislike" title="Beğenme"></button>
+    <div class="t"><div id="title">—</div><div id="artist"></div></div>
+    <button class="ib" id="like" title="Beğen"></button>
+  </div>
+  <div class="prog"><input type="range" id="seek" min="0" max="1000" value="0"><div class="times"><span id="cur">0:00</span><span id="dur">0:00</span></div></div>
+  <div class="ctrls">
+    <button class="ib" id="shuffle" title="Karıştır"></button>
+    <button class="ib mid" id="prev" title="Önceki"></button>
+    <button class="ib big" id="toggle" title="Oynat / Duraklat"></button>
+    <button class="ib mid" id="next" title="Sonraki"></button>
+    <button class="ib" id="repeat" title="Tekrarla"></button>
+  </div>
+  <div class="vol"><button class="ib" id="mute" title="Sessiz"></button><input type="range" id="vol" min="0" max="100" value="50"><span id="volv">%50</span></div>
+</main>
+<section id="qsec"><h3>Sıradakiler</h3><div id="queue"></div></section>
+<script>
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const tok = location.pathname.split('/')[2];
+  const API = '/api/' + tok;
+  const NS = 'http://www.w3.org/2000/svg';
+  const icon = (d, fill) => { const s = document.createElementNS(NS, 'svg'); s.setAttribute('viewBox', '0 0 24 24'); [].concat(d).forEach((x) => { const p = document.createElementNS(NS, 'path'); p.setAttribute('d', x); if (fill) p.setAttribute('fill', 'currentColor'); else { p.setAttribute('fill', 'none'); p.setAttribute('stroke', 'currentColor'); p.setAttribute('stroke-width', '2'); p.setAttribute('stroke-linecap', 'round'); p.setAttribute('stroke-linejoin', 'round'); } s.appendChild(p); }); return s; };
+  const I = {
+    play: () => icon('M8 5v14l11-7z', true), pause: () => icon(['M7 5h3.5v14H7z', 'M13.5 5H17v14h-3.5z'], true),
+    prev: () => icon(['M6 5h2v14H6z', 'M20 5v14L9 12z'], true), next: () => icon(['M16 5h2v14h-2z', 'M4 5v14l11-7z'], true),
+    like: () => icon('M7 10v10H4V10zM7 10l4-7c1.5 0 2.5 1 2.2 2.6L12.6 9H19a2 2 0 0 1 2 2.3l-1.2 6.5A2.5 2.5 0 0 1 17.3 20H7'),
+    dislike: () => icon('M17 14V4h3v10zM17 14l-4 7c-1.5 0-2.5-1-2.2-2.6l.6-3.4H5a2 2 0 0 1-2-2.3l1.2-6.5A2.5 2.5 0 0 1 6.7 4H17'),
+    shuffle: () => icon(['M16 3h5v5', 'M4 20L21 3', 'M21 16v5h-5', 'M15 15l6 6', 'M4 4l5 5']),
+    repeat: () => icon(['M17 2l4 4-4 4', 'M3 11v-1a4 4 0 0 1 4-4h14', 'M7 22l-4-4 4-4', 'M21 13v1a4 4 0 0 1-4 4H3']),
+    vol: () => icon(['M4 9v6h4l5 4V5L8 9z', 'M16.5 8.5a5 5 0 0 1 0 7']), mute: () => icon(['M4 9v6h4l5 4V5L8 9z', 'M17 9l5 6', 'M22 9l-5 6'])
+  };
+  const setIcon = (id, ic) => $(id).replaceChildren(I[ic]());
+  ['prev', 'next', 'like', 'dislike', 'shuffle', 'repeat'].forEach((k) => setIcon(k, k)); setIcon('toggle', 'play'); setIcon('mute', 'vol');
+  const fmt = (s) => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+  const send = (cmd, v) => fetch(API + '/cmd', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(v === undefined ? { cmd } : { cmd, v }) }).catch(() => {});
+  if (navigator.vibrate) document.addEventListener('click', (e) => { if (e.target.closest('button,.row')) navigator.vibrate(8); });
+
+  let S = null, base = 0, recvAt = 0, seeking = false, volDrag = false, lastArt = '';
+  const pos = () => { if (!S || !S.np) return 0; const np = S.np; return Math.min(np.duration || 0, base + (np.paused ? 0 : (Date.now() - recvAt) / 1000 * (np.rate || 1))); };
+  function paintProgress() {
+    if (!S || !S.np || seeking) return;
+    const d = S.np.duration || 0, t = pos();
+    const r = $('seek'); r.value = d ? Math.round(t / d * 1000) : 0; r.style.setProperty('--p', (r.value / 10) + '%');
+    $('cur').textContent = fmt(t); $('dur').textContent = fmt(d);
+  }
+  setInterval(paintProgress, 500);
+
+  function render() {
+    const np = S && S.np;
+    $('empty').style.display = np ? 'none' : 'block';
+    $('player').style.display = np ? '' : 'none';
+    if (S && S.accent) document.documentElement.style.setProperty('--accent', S.accent);
+    const b = [];
+    if (S && S.game) b.push('Oyun modu');
+    if (S && S.partyRoom) b.push('Oda ' + S.partyRoom.code + ' · ' + S.partyRoom.n + ' kişi');
+    $('badges').replaceChildren(...b.map((t) => { const s = document.createElement('span'); s.className = 'badge'; s.textContent = t; return s; }));
+    if (!np) return;
+    const art = (np.artwork || '').replace(/=w\d+-h\d+/, '=w544-h544');
+    if (art !== lastArt && /^https:\/\//.test(art)) { lastArt = art; $('art').style.backgroundImage = 'url("' + art.replace(/"/g, '') + '")'; $('bg').style.backgroundImage = 'url("' + art.replace(/"/g, '') + '")'; }
+    $('title').textContent = np.title || '—'; $('artist').textContent = np.artist || '';
+    document.title = (np.title || 'Kumanda') + ' · YouTube Music';
+    setIcon('toggle', np.paused ? 'play' : 'pause');
+    $('like').classList.toggle('on', S.like === 'LIKE'); $('dislike').classList.toggle('on', S.like === 'DISLIKE');
+    if (!volDrag && S.vol != null) { $('vol').value = S.vol; $('vol').style.setProperty('--p', S.vol + '%'); $('volv').textContent = S.muted ? 'Sessiz' : '%' + S.vol; }
+    setIcon('mute', S.muted ? 'mute' : 'vol');
+    const q = S.queue || [];
+    $('qsec').style.display = q.length ? '' : 'none';
+    const kids = []; let autoHdr = false;
+    q.forEach((x) => {
+      if (x.auto && !autoHdr) { autoHdr = true; const h = document.createElement('div'); h.className = 'sub'; h.textContent = 'Sonra otomatik çalacak'; kids.push(h); }
+      const r = document.createElement('div'); r.className = 'row';
+      let im; if (/^https:\/\//.test(x.art || '')) { im = document.createElement('img'); im.src = x.art; im.alt = ''; im.loading = 'lazy'; } else { im = document.createElement('div'); im.className = 'ph'; }
+      const m = document.createElement('div'); m.className = 'm';
+      const t = document.createElement('b'); t.textContent = x.title; const a = document.createElement('small'); a.textContent = x.artist; m.append(t, a);
+      const l = document.createElement('span'); l.className = 'len'; l.textContent = x.len || '';
+      r.append(im, m, l); r.onclick = () => send('play', x.i); kids.push(r);
+    });
+    $('queue').replaceChildren(...kids);
+    paintProgress();
+  }
+
+  function connect() {
+    const es = new EventSource(API + '/events');
+    es.onopen = () => { $('dot').classList.add('on'); $('conn').textContent = 'Bilgisayara bağlı'; };
+    es.onmessage = (e) => {
+      try { S = JSON.parse(e.data); } catch (x) { return; }
+      if (S.np) { base = (S.np.currentTime || 0) + (S.np.paused ? 0 : Math.max(0, (S.now - S.at) / 1000) * (S.np.rate || 1)); recvAt = Date.now(); }
+      render();
+    };
+    es.onerror = () => { $('dot').classList.remove('on'); $('conn').textContent = 'Bağlantı yok — bilgisayar açık ve aynı Wi-Fi\'da mı?'; };
+  }
+  connect();
+
+  $('toggle').onclick = () => { if (S && S.np) { S.np.paused = !S.np.paused; base = pos(); recvAt = Date.now(); render(); } send('toggle'); };
+  $('next').onclick = () => send('next'); $('prev').onclick = () => send('prev');
+  $('like').onclick = () => send('like'); $('dislike').onclick = () => send('dislike');
+  $('shuffle').onclick = () => send('shuffle'); $('repeat').onclick = () => send('repeat');
+  $('mute').onclick = () => send('mute');
+  const seek = $('seek');
+  seek.addEventListener('input', () => { seeking = true; seek.style.setProperty('--p', (seek.value / 10) + '%'); if (S && S.np) $('cur').textContent = fmt(seek.value / 1000 * (S.np.duration || 0)); });
+  seek.addEventListener('change', () => { if (S && S.np) { const t = seek.value / 1000 * (S.np.duration || 0); base = t; recvAt = Date.now(); send('seek', Math.round(t)); } seeking = false; });
+  const vol = $('vol'); let volT = 0;
+  vol.addEventListener('input', () => { volDrag = true; vol.style.setProperty('--p', vol.value + '%'); $('volv').textContent = '%' + vol.value; clearTimeout(volT); volT = setTimeout(() => send('vol', +vol.value), 120); });
+  vol.addEventListener('change', () => { send('vol', +vol.value); setTimeout(() => { volDrag = false; }, 800); });
+</script>
+</body>
+</html>
