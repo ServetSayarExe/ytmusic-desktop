@@ -126,7 +126,7 @@
 .ytmd-f-bar:hover { height: 8px; margin-top: -1px; }
 .ytmd-f-fill { height: 100%; width: 0; background: #fff; border-radius: 6px; transition: width .25s linear; }
 .ytmd-f-times { display: flex; justify-content: space-between; margin-top: 8px; font-size: 13px; color: rgba(255,255,255,.6); font-variant-numeric: tabular-nums; }
-.ytmd-f-controls { display: flex; align-items: center; gap: 22px; margin-top: 12px; }
+.ytmd-f-controls { display: flex; align-items: center; justify-content: center; gap: 22px; margin-top: 12px; width: min(38vh, 30vw); min-width: 260px; }
 .ytmd-f-btn {
   width: 52px; height: 52px; border-radius: 50%; border: 0; display: grid; place-items: center;
   background: transparent; color: #fff; cursor: pointer; transition: transform .15s, background .15s;
@@ -289,3 +289,26 @@
 }
 #ytmd-vol small { font-size: 11px; color: var(--ytmd-accent); margin-left: 2px; }
 #ytmd-vol.muted { color: rgba(255, 255, 255, 0.5); }
+
+/* ===================== Oynatıcı çubuğu kaybolmasın ===================== */
+/* YouTube bazen çalarken bile çubuğu aşağı kaydırıp gizliyor; şarkı yüklüyse hep görünür tut */
+.ytmd-has-track ytmusic-app-layout > [slot="player-bar"],
+.ytmd-has-track #player-bar-background.ytmusic-app-layout { transform: translateZ(0) !important; visibility: visible !important; }
+
+/* ===================== Liste kapaklarındaki oynat simgesi (ortala) ===================== */
+ytmusic-responsive-list-item-renderer ytmusic-item-thumbnail-overlay-renderer #content {
+  display: flex !important; align-items: center !important; justify-content: center !important; height: 100% !important; width: 100% !important;
+}
+ytmusic-responsive-list-item-renderer ytmusic-item-thumbnail-overlay-renderer ytmusic-play-button-renderer {
+  margin: 0 !important; top: auto !important; transform: none !important; flex: none !important;
+}
+
+/* ===================== İmza ===================== */
+#ytmd-credit {
+  position: absolute; left: 150px; top: 50%; transform: translateY(-50%); z-index: 5;
+  font: 500 12px "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap; pointer-events: auto; -webkit-app-region: no-drag;
+}
+#ytmd-credit a { color: rgba(255, 255, 255, 0.85); text-decoration: none; font-weight: 600; cursor: pointer; -webkit-app-region: no-drag; }
+#ytmd-credit a:hover { color: var(--ytmd-accent); text-decoration: underline; }
+#ytmd-credit.ytmd-hide { visibility: hidden; }
