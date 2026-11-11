@@ -6,6 +6,7 @@ const {
 const path = require('path');
 const fs = require('fs');
 const { DiscordRPC } = require('./discord');
+const createFeatures = require('./features');
 
 const YTM_URL = 'https://music.youtube.com';
 const APP_ID = 'com.local.ytmusicdesktop';
@@ -64,7 +65,8 @@ const DEFAULTS = {
   notifications: true, discord: true, discordClientId: '',
   eq: { enabled: false, preset: 'Düz', bands: [0, 0, 0, 0, 0] }, normalize: false,
   stats: true, miniBounds: null,
-  crossfade: 0, speed: 1, outputDevice: '', taskbarProgress: true, homeHero: true, dailyGoal: 30, boost: 100, closeToTray: true
+  crossfade: 0, speed: 1, outputDevice: '', taskbarProgress: true, homeHero: true, dailyGoal: 30, boost: 100, closeToTray: true,
+  gameAuto: false, remote: false, partyName: '', partyRelay: 'https://ntfy.sh'
 };
 const settings = readJSON(settingsFile, DEFAULTS);
 const saveSettings = () => { try { fs.writeFileSync(settingsFile, JSON.stringify(settings)); } catch {} };
@@ -255,6 +257,7 @@ async function onNowPlaying(data) {
   if (tray) tray.setToolTip(`${data.title}${data.artist ? ' – ' + data.artist : ''}`.slice(0, 127));
   updateDiscord();
   pushMini();
+  if (F) F.remote.push();
 
   if (!newTrack) return;
   const artSmall = (data.artwork || '').replace(/=w\d+-h\d+/, '=w120-h120');
@@ -390,11 +393,16 @@ function setSetting(key, value) {
       settings.eq = { enabled: bool(value.enabled), preset: String(value.preset || 'Özel').slice(0, 40), bands };
       break;
     }
-    default: return;
+    default: if (F) F.setSetting(key, value); return;
   }
   saveSettings();
   pushPageSettings();
 }
+
+// ---------------- 2.0 özellikleri (features.js) ----------------
+let F = null, featureTick = null;
+const featureChanged = () => { clearTimeout(featureTick); featureTick = setTimeout(() => { buildTrayMenu(); if (tray && F) tray.setToolTip(F.game.isActive() ? 'YouTube Music · Oyun modu' : (np ? `${np.title}${np.artist ? ' – ' + np.artist : ''}`.slice(0, 127) : 'YouTube Music')); }, 50); };
+const pageEval = (code) => (win && !win.isDestroyed() ? win.webContents.executeJavaScript(code) : Promise.resolve(null));
 
 // ---------------- Uyku zamanlayıcı ----------------
 let sleep = { mode: 'off', until: 0 }, sleepTimer = null;
@@ -447,7 +455,10 @@ function createWindow() {
     win.webContents.insertCSS(readText('core.css')).catch(() => {});
     if (settings.theme) win.webContents.insertCSS(readText('theme.css')).catch(() => {});
     win.webContents.executeJavaScript(`window.__ytmdTheme = ${settings.theme ? 'true' : 'false'};\n${readText('page.js')}`)
-      .then(() => { pushPageSettings(); applyAccent(hexToRgb(accentHex)); if (sleep.mode === 'track') setSleep('track'); showUpdateCard(); })
+      .then(() => {
+        pushPageSettings(); applyAccent(hexToRgb(accentHex)); if (sleep.mode === 'track') setSleep('track'); showUpdateCard();
+        if (F) { F.game.reapply(); const p = F.party.info(); if (p) pageJS(`window.__ytmdPartyStatus && window.__ytmdPartyStatus(${JSON.stringify(p)})`); }
+      })
       .catch((e) => console.error('page.js', e));
   });
 
@@ -658,6 +669,17 @@ ipcMain.on('ytmd-goal-set', (e, m) => { if (fromStatsOrSettings(e)) setSetting('
 ipcMain.handle('ytmd-history-count', (e) => (fromStatsOrSettings(e) ? history.length : 0));
 ipcMain.handle('ytmd-history-clear', (e) => { if (!isFrom(e, settingsRef)) return false; history = []; saveHistory(true); return true; });
 ipcMain.on('ytmd-open-stats', (e) => { if (isFrom(e, settingsRef)) openStats(); });
+ipcMain.handle('ytmd-energy', (e, list) => (fromMain(e) && F ? F.energy(list) : {}));
+ipcMain.handle('ytmd-party', (e, cmd, a, b) => {
+  if (!fromMain(e) || !F) return null;
+  if (cmd === 'join') return F.party.join(a, !!b);
+  if (cmd === 'leave') { F.party.leave(); return true; }
+  if (cmd === 'send') return F.party.send(a);
+  if (cmd === 'info') return F.party.info() || { name: settings.partyName || require('os').userInfo().username };
+  if (cmd === 'name') { F.setSetting('partyName', a); return true; }
+  return null;
+});
+ipcMain.handle('ytmd-feature-info', (e) => (isFrom(e, settingsRef) && F ? { game: F.game.info(), remote: F.remote.info(), party: F.party.info(), gameDefault: F.GAME_DEFAULT } : null));
 ipcMain.on('ytmd-play-video', (e, id) => {
   if (!fromStatsOrSettings(e) || !/^[\w-]{6,20}$/.test(String(id))) return;
   win.loadURL(`https://music.youtube.com/watch?v=${id}`); showMain();
@@ -681,6 +703,9 @@ function buildTrayMenu() {
       { type: 'separator' },
       { label: 'Kapat', enabled: sleep.mode !== 'off', click: () => setSleep('off') }
     ] },
+    { label: 'Oyun modu' + (F && F.game.info().detected ? ` (${F.game.info().detected.replace(/\.exe$/i, '')})` : ''), type: 'checkbox', checked: !!(F && F.game.isActive()), accelerator: 'CommandOrControl+Shift+G', click: () => F && F.game.toggle() },
+    { label: 'Telefondan kumanda', type: 'checkbox', checked: !!settings.remote, click: (mi) => { setSetting('remote', mi.checked); if (mi.checked) openSettings(); } },
+    { type: 'separator' },
     { label: 'İstatistikler', click: openStats },
     { label: 'Ayarlar', click: openSettings },
     { type: 'separator' }
@@ -718,8 +743,10 @@ if (!app.requestSingleInstanceLock()) {
       cb({ requestHeaders: h });
     });
 
+    F = createFeatures({ app, fetch: (u, o) => net.fetch(u, o), settings, saveSettings, pageJS, pageEval, control, onChange: featureChanged, userData, getWin: () => win, getNp: () => ({ np, npAt, accent: accentHex }) });
     createWindow();
     createTray();
+    F.start();
     applyDiscordSettings();
     initUpdater();
 
@@ -727,9 +754,10 @@ if (!app.requestSingleInstanceLock()) {
     globalShortcut.register('CommandOrControl+Shift+Right', () => control('next'));
     globalShortcut.register('CommandOrControl+Shift+Left', () => control('prev'));
     globalShortcut.register('CommandOrControl+Shift+M', toggleMini);
+    globalShortcut.register('CommandOrControl+Shift+G', () => F && F.game.toggle());
   });
 
   app.on('before-quit', () => { quitting = true; commitListen(true); saveHistory(true); });
-  app.on('will-quit', () => { globalShortcut.unregisterAll(); discord.disconnect(); });
+  app.on('will-quit', () => { globalShortcut.unregisterAll(); discord.disconnect(); if (F) F.stop(); });
   app.on('activate', showMain);
 }
