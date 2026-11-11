@@ -441,7 +441,7 @@
   };
   // Oynatma hızı: YouTube her şarkıda 1x'e döndürebilir, o yüzden sürekli koru
   setInterval(() => {
-    const v = video(); if (!v) return;
+    const v = video(); if (!v || AD.on) return;
     if (Math.abs((v.playbackRate || 1) - audio.speed) > 0.01) { try { v.playbackRate = audio.speed; } catch (e) {} }
     if (audio.device && v.sinkId !== audio.device && !eq.ctx) applySink();
   }, 1000);
@@ -1236,7 +1236,7 @@
   document.addEventListener('timeupdate', (e) => {
     const v = e.target; if (!(v instanceof HTMLVideoElement) || v.paused || !isFinite(v.duration) || v.duration < 20) return;
     const rem = (v.duration - v.currentTime) / (v.playbackRate || 1);
-    if (rem > 0.9) return;
+    if (rem > 0.9 || AD.on) return;   // reklam bitişi şarkı bitişi sayılmasın
     const id = curId(); if (SQ.firedFor === id) return;
     if (PT.code && !PT.host) { SQ.firedFor = id; ctl.pause(); return; }   // misafir: oda sahibinin sıradaki şarkısını bekle
     if ((PT.code && PT.host && PT.queue.length) || (SQ.mode !== 'off' && SQ.pick)) { SQ.firedFor = id; nextOverride(); }
@@ -1408,6 +1408,39 @@
   // Açılışın ilk 9 saniyesi: parçaları 150 ms'de bir dene (sonra normal seyrek kontrollere döner)
   { let n = 0; const id = setInterval(() => { for (const f of bootFns) { try { f(); } catch (e) {} } if (++n >= 60) clearInterval(id); }, 150); }
 
+  // ---------------- Reklam atlayıcı (Premium'suz hesaplar için) ----------------
+  // Şarkı arası reklam başlayınca: sesi kapat, sona sar, "Reklamı atla"ya bas; şarkı gelince sesi ve hızı geri ver.
+  const AD = { enabled: true, on: false, muted: false, obs: null, mp: null, count: 0 };
+  const AD_SKIP_BTN = '.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, .ytp-ad-skip-button-container button, button[id^="skip-button"]';
+  function adCheck() {
+    const mp = AD.mp; if (!mp) return;
+    const isAd = AD.enabled && (mp.classList.contains('ad-showing') || mp.classList.contains('ad-interrupting'));
+    const v = video();
+    if (isAd) {
+      if (!AD.on) { AD.on = true; AD.muted = v ? v.muted : false; AD.count++; }
+      if (v) {
+        v.muted = true;
+        if (isFinite(v.duration) && v.duration > 0 && v.currentTime < v.duration - 0.25) { try { v.playbackRate = 16; } catch (e) {} v.currentTime = Math.max(0, v.duration - 0.1); }
+      }
+      const btn = mp.querySelector(AD_SKIP_BTN); if (btn) btn.click();
+      clearTimeout(AD.t); AD.t = setTimeout(adCheck, 300);   // birden fazla reklam arka arkaya gelebilir
+    } else if (AD.on) {
+      AD.on = false; clearTimeout(AD.t);
+      if (v) { v.muted = AD.muted; try { v.playbackRate = audio.speed || 1; } catch (e) {} }
+    }
+  }
+  function adWatch() {
+    const mp = document.getElementById('movie_player');
+    if (!mp || mp === AD.mp) return;
+    AD.mp = mp;
+    if (AD.obs) AD.obs.disconnect();
+    AD.obs = new MutationObserver(adCheck);
+    AD.obs.observe(mp, { attributes: true, attributeFilter: ['class'] });
+    adCheck();
+  }
+  adWatch(); bootFns.push(adWatch); setInterval(adWatch, 5000);
+  window.__ytmdAdInfo = () => ({ on: AD.on, count: AD.count, enabled: AD.enabled });
+
   // ---------------- Ayarları uygula (ana işlem çağırır) ----------------
   window.__ytmdApply = (s = {}) => {
     root.classList.remove('ytmd-mode-dark', 'ytmd-mode-amoled', 'ytmd-mode-cover');
@@ -1425,6 +1458,7 @@
     else if ('normalize' in s) { eq.settings.normalize = !!s.normalize; eqApply(); }
     else eqApply();
     if ('homeHero' in s && THEME) HOME.set(s.homeHero !== false);
+    if ('adSkip' in s) { AD.enabled = s.adSkip !== false; adCheck(); }
     renderAudioPop();
   };
   window.__ytmdSleep = (mode) => {
