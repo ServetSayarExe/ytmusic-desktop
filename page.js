@@ -893,6 +893,21 @@
   setInterval(() => { if (!document.hidden) tickVolume(); }, 250);
   document.addEventListener('volumechange', () => tickVolume(), true);
 
+  // ---------------- Az bellek modu (pencere gizliyken) ----------------
+  // Görünmeyen videoyu en düşük kaliteye alır (ses kalitesi değişmez) ve kullanılmayan belleği boşaltır.
+  let lowPower = false, gcTimer = 0;
+  const freeMem = () => { try { typeof window.gc === 'function' && window.gc(); } catch (e) {} };
+  window.__ytmdLowPower = (on) => {
+    if (on === lowPower) return;
+    lowPower = on;
+    const p = player();
+    try { p && p.setPlaybackQualityRange && (on ? p.setPlaybackQualityRange('tiny', 'tiny') : p.setPlaybackQualityRange('auto', 'auto')); } catch (e) {}
+    clearInterval(gcTimer);
+    if (on) { setTimeout(freeMem, 15000); gcTimer = setInterval(freeMem, 180000); }
+  };
+  // Yeni şarkıda YouTube kaliteyi sıfırlayabilir: gizliyken tekrar düşür
+  trackListeners.push(() => { if (lowPower) { lowPower = false; window.__ytmdLowPower(true); } });
+
   // ---------------- Güncelleme kartı ----------------
   const updTitle = el('div', { class: 'ytmd-upd-title' });
   const updNotes = el('div', { class: 'ytmd-upd-notes' });
