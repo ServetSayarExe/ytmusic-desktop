@@ -439,6 +439,11 @@ ytmusic-app-layout[guide-collapsed] #ytmd-lib, #mini-guide #ytmd-lib { display: 
 /* Sürüklerken akıcı olsun: geçişler geçici olarak kapalı */
 .ytmd-guide-drag ytmusic-app-layout *, .ytmd-guide-drag ytmusic-app-layout *::before, .ytmd-guide-drag ytmusic-app-layout *::after { transition: none !important; animation-play-state: paused !important; }
 .ytmd-guide-drag #ytmd-lib-list, .ytmd-guide-drag ytmusic-browse-response { pointer-events: none; }
+/* Sürüklerken menünün arka planı ve kenar çizgisi de kitaplıkla birlikte genişlesin (eski genişlikte donup kalmasın) */
+.ytmd-guide-drag ytmusic-app-layout > [slot="guide"],
+.ytmd-guide-drag ytmusic-app-layout > [slot="guide"] #contentContainer,
+.ytmd-guide-drag ytmusic-app #guide-wrapper,
+.ytmd-guide-drag #guide-spacer { width: var(--ytmd-guide-w, 240px) !important; }
 #ytmd-guide-handle::after { content: ""; position: absolute; left: 3px; top: 0; bottom: 0; width: 2px; border-radius: 2px; background: transparent; transition: background .15s; }
 #ytmd-guide-handle:hover::after, .ytmd-guide-drag #ytmd-guide-handle::after { background: var(--ytmd-accent); }
 .ytmd-guide-drag, .ytmd-guide-drag * { cursor: ew-resize !important; user-select: none !important; }
