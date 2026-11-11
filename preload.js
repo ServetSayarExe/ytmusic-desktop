@@ -23,6 +23,8 @@ contextBridge.exposeInMainWorld('ytmd', {
   coverData: (url) => ipcRenderer.invoke('ytmd-cover-data', url),
   copyImage: (dataUrl) => ipcRenderer.invoke('ytmd-copy-image', dataUrl),
   saveImage: (dataUrl, name) => ipcRenderer.invoke('ytmd-save-image', dataUrl, name),
+  energy: (list) => ipcRenderer.invoke('ytmd-energy', list),
+  party: (cmd, a, b) => ipcRenderer.invoke('ytmd-party', cmd, a, b),
 
   // mini oynatıcı
   onNowPlaying: (cb) => ipcRenderer.on('ytmd-np-push', (_e, d) => cb(d)),
@@ -39,6 +41,7 @@ contextBridge.exposeInMainWorld('ytmd', {
   updateInfo: () => ipcRenderer.invoke('ytmd-update-info'),
   openReleases: () => ipcRenderer.send('ytmd-open-releases'),
   getDevices: () => ipcRenderer.invoke('ytmd-devices'),
+  featureInfo: () => ipcRenderer.invoke('ytmd-feature-info'),
 
   // istatistikler
   getHistory: () => ipcRenderer.invoke('ytmd-history-get'),
