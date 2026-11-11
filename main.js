@@ -234,7 +234,7 @@ function updateProgress() {
     const t = np.currentTime + (np.paused ? 0 : (Date.now() - npAt) / 1000 * (np.rate || 1));
     frac = Math.max(0.001, Math.min(1, t / np.duration)); mode = np.paused ? 'paused' : 'normal';
   }
-  if (lastProg && lastProg.mode === mode && Math.abs(lastProg.frac - frac) < 0.004) return;
+  if (lastProg && lastProg.mode === mode && Math.abs(lastProg.frac - frac) < 0.01) return;
   lastProg = { frac, mode };
   try { frac < 0 ? win.setProgressBar(-1) : win.setProgressBar(frac, { mode }); } catch (e) {}
 }
