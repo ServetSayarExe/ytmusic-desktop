@@ -348,9 +348,9 @@ html.ytmd-mode-amoled { background: #000 !important; }
 /* ===================== Spotify tarzı kitaplık ===================== */
 .ytmd-lib-on ytmusic-guide-entry-renderer.ytmd-lib-hidden { display: none !important; }
 #ytmd-lib { margin: 10px 8px 0; display: flex; flex-direction: column; min-height: 0; font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; color: #fff; }
-.ytmd-lib-head { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px 10px; }
+.ytmd-lib-head { flex: none; display: flex; align-items: center; justify-content: space-between; padding: 6px 8px 10px; }
 .ytmd-lib-h { font: 800 17px "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
-.ytmd-lib-chips { display: flex; gap: 5px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none !important; padding: 0 6px 8px; }
+.ytmd-lib-chips { flex: none; display: flex; scroll-behavior: smooth; -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); mask-image: linear-gradient(90deg, #000 85%, transparent); gap: 5px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none !important; padding: 0 6px 8px; }
 .ytmd-lib-chip {
   border: 0; border-radius: 999px; padding: 6px 10px; cursor: pointer; white-space: nowrap; flex: none;
   background: rgba(255, 255, 255, 0.08); color: #fff; font: 600 12px inherit; font-family: inherit;
@@ -358,7 +358,7 @@ html.ytmd-mode-amoled { background: #000 !important; }
 }
 .ytmd-lib-chip:hover { background: rgba(255, 255, 255, 0.14); }
 .ytmd-lib-chip.on { background: #fff; color: #0b0b0f; }
-.ytmd-lib-tools { display: flex; align-items: center; gap: 6px; padding: 2px 6px 6px; }
+.ytmd-lib-tools { flex: none; display: flex; align-items: center; gap: 6px; padding: 2px 6px 6px; }
 .ytmd-lib-icon { width: 30px; height: 30px; border: 0; border-radius: 50%; background: transparent; color: rgba(255,255,255,.75); cursor: pointer; display: grid; place-items: center; flex: none; }
 .ytmd-lib-icon:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
 .ytmd-lib-search {
@@ -425,3 +425,19 @@ ytmusic-app-layout[guide-collapsed] #ytmd-lib, #mini-guide #ytmd-lib { display: 
 .ytmd-home-page ytmusic-carousel-shelf-renderer ytmusic-two-row-item-renderer ytmusic-thumbnail-renderer,
 .ytmd-home-page ytmusic-carousel-shelf-renderer ytmusic-two-row-item-renderer img { border-radius: 10px !important; }
 .ytmd-home-page ytmusic-carousel-shelf-renderer .title.ytmusic-carousel-shelf-basic-header-renderer { font-size: 24px !important; font-weight: 800 !important; letter-spacing: -0.01em; }
+
+/* Kitaplık: çipler küçülmesin, tam görünsün */
+.ytmd-lib-chip { flex: none !important; white-space: nowrap; }
+.ytmd-lib-chips:hover { -webkit-mask-image: none; mask-image: none; }
+/* Sol menü genişletme tutamağı */
+#ytmd-guide-handle {
+  position: fixed; top: 64px; bottom: 100px; left: calc(var(--ytmd-guide-w, 240px) - 4px); width: 8px; z-index: 6;
+  cursor: ew-resize; display: none; -webkit-app-region: no-drag;
+}
+.ytmd-guide-wide #ytmd-guide-handle { display: block; }
+.ytmd-guide-wide ytmusic-app-layout { --ytmusic-guide-width: var(--ytmd-guide-w, 240px) !important; }
+#ytmd-guide-handle::after { content: ""; position: absolute; left: 3px; top: 0; bottom: 0; width: 2px; border-radius: 2px; background: transparent; transition: background .15s; }
+#ytmd-guide-handle:hover::after, .ytmd-guide-drag #ytmd-guide-handle::after { background: var(--ytmd-accent); }
+.ytmd-guide-drag, .ytmd-guide-drag * { cursor: ew-resize !important; user-select: none !important; }
+.ytmd-guide-wide ytmusic-app-layout #guide-wrapper ytmusic-guide-renderer,
+.ytmd-guide-wide ytmusic-app-layout #guide-content { width: var(--ytmd-guide-w, 240px) !important; }
