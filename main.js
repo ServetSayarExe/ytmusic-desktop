@@ -445,6 +445,13 @@ function createWindow() {
     dbg.attach('1.3');
     dbg.sendCommand('Page.enable');
     dbg.sendCommand('Page.addScriptToEvaluateOnNewDocument', { source: LOGIN_STEALTH_JS });
+    // Görünümü sayfanın ilk saniyesinde ekle: YouTube'un kendi görünümü bir an bile görünmesin
+    const css = readText('core.css') + (settings.theme ? '\n' + readText('theme.css') : '');
+    dbg.sendCommand('Page.addScriptToEvaluateOnNewDocument', { source: `(() => {
+      if (location.hostname !== 'music.youtube.com') return;
+      const s = document.createElement('style'); s.id = 'ytmd-early-css'; s.textContent = ${JSON.stringify(css)};
+      (document.head || document.documentElement).appendChild(s);
+    })();` });
   } catch (e) { console.error('debugger attach failed', e); }
   win.webContents.on('did-start-navigation', (d) => { if (d.isMainFrame) win.webContents.setUserAgent(uaFor(d.url)); });
 
@@ -456,6 +463,7 @@ function createWindow() {
     if (settings.theme) win.webContents.insertCSS(readText('theme.css')).catch(() => {});
     win.webContents.executeJavaScript(`window.__ytmdTheme = ${settings.theme ? 'true' : 'false'};\n${readText('page.js')}`)
       .then(() => {
+        pageJS("setTimeout(() => { const s = document.getElementById('ytmd-early-css'); if (s) s.remove(); }, 1500)");
         pushPageSettings(); applyAccent(hexToRgb(accentHex)); if (sleep.mode === 'track') setSleep('track'); showUpdateCard();
         if (F) { F.game.reapply(); const p = F.party.info(); if (p) pageJS(`window.__ytmdPartyStatus && window.__ytmdPartyStatus(${JSON.stringify(p)})`); }
       })
@@ -734,21 +742,26 @@ if (!app.requestSingleInstanceLock()) {
     ses.setUserAgent(UA_CHROME);
     for (const url of PRECONNECT) { try { ses.preconnect({ url, numSockets: 2 }); } catch (e) {} }
     ses.webRequest.onBeforeRequest({ urls: BLOCK_URLS }, (d, cb) => cb({ cancel: true }));
-    ses.webRequest.onBeforeSendHeaders((details, cb) => {
+    // Sadece Google giriş sayfasının istekleri ana işlemden geçsin (önceden HER istek geçiyordu ve açılışı yavaşlatıyordu).
+    // Geri kalanlar zaten oturumun Chrome kimliğiyle gider.
+    const LOGIN_FILTER = ['*://accounts.google.com/*', '*://*.accounts.google.com/*', '*://accounts.youtube.com/*',
+      '*://*.gstatic.com/*', '*://apis.google.com/*', '*://www.google.com/*', '*://ogs.google.com/*', '*://myaccount.google.com/*'];
+    ses.webRequest.onBeforeSendHeaders({ urls: LOGIN_FILTER }, (details, cb) => {
       const h = details.requestHeaders;
       if (isLoginHost(details.url) || isLoginHost(details.referrer || '')) {
         for (const k of Object.keys(h)) if (k.toLowerCase().startsWith('sec-ch-ua')) delete h[k];
         h['User-Agent'] = UA_FIREFOX;
-      } else h['User-Agent'] = UA_CHROME;
+      }
       cb({ requestHeaders: h });
     });
 
     F = createFeatures({ app, fetch: (u, o) => net.fetch(u, o), settings, saveSettings, pageJS, pageEval, control, onChange: featureChanged, userData, getWin: () => win, getNp: () => ({ np, npAt, accent: accentHex }) });
     createWindow();
     createTray();
-    F.start();
-    applyDiscordSettings();
-    initUpdater();
+    // Acil olmayanlar: pencere yüklenirken araya girmesinler
+    setTimeout(() => F.start(), 1500);
+    setTimeout(applyDiscordSettings, 2500);
+    setTimeout(initUpdater, 4000);
 
     globalShortcut.register('CommandOrControl+Shift+Space', () => control('playpause'));
     globalShortcut.register('CommandOrControl+Shift+Right', () => control('next'));
