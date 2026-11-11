@@ -1,7 +1,7 @@
 {
   "name": "ytmusic-desktop",
   "productName": "YouTube Music Desktop",
-  "version": "2.0.5",
+  "version": "2.0.6",
   "description": "YouTube Music için masaüstü uygulaması",
   "main": "main.js",
   "scripts": {
@@ -41,6 +41,7 @@
       "signAndEditExecutable": false
     },
     "nsis": {
+      "artifactName": "YouTube-Music-Desktop-Setup.${ext}",
       "oneClick": true,
       "perMachine": false,
       "createDesktopShortcut": true,
