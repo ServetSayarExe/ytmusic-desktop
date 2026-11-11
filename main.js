@@ -551,7 +551,10 @@ function updateInfo() {
 // Sürüm notlarını düz metne çevir (GitHub sürüm açıklaması)
 function notesText(n) {
   const raw = Array.isArray(n) ? n.map((x) => x.note || '').join('\n') : String(n || '');
-  return raw.replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 220);
+  return raw.replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ').trim()
+    .replace(/\s*(…|\.\.\.)\s*(…|\.\.\.)\s*/g, '')       // GitHub uzun başlığı "… …" ile ikiye böler: birleştir
+    .replace(/^v?\d+\.\d+(\.\d+)?\s*[:\-–]\s*/, '')     // baştaki "2.0.2:" gereksiz (başlıkta zaten var)
+    .slice(0, 220);
 }
 const showUpdateCard = () => { if (pendingUpdate) pageJS(`window.__ytmdUpdate && window.__ytmdUpdate(${JSON.stringify(pendingUpdate)})`); };
 function installUpdate() {
@@ -586,9 +589,17 @@ function initUpdater() {
       try { new Notification({ title: 'YouTube Music için güncelleme hazır', body: `${i.version} sürümü indirildi. Uygulamayı açıp "Şimdi güncelle"ye basman yeterli.`, silent: true }).show(); } catch (e) {}
     }
   });
-  const check = () => updater.checkForUpdates().catch(() => {});
+  // Yeni sürüm yayınlanınca ayarlara girmeden haberin olsun: 30 dakikada bir + pencere her açıldığında (en sık 10 dk'da bir)
+  let lastCheck = 0;
+  const check = () => {
+    if (updateReady || downloading) return;
+    lastCheck = Date.now();
+    updater.checkForUpdates().catch(() => {});
+  };
   setTimeout(check, 10000);
-  setInterval(check, 6 * 3600 * 1000);
+  setInterval(check, 30 * 60 * 1000);
+  const onShow = () => { if (Date.now() - lastCheck > 10 * 60 * 1000) check(); };
+  if (win) { win.on('show', onShow); win.on('focus', onShow); }
 }
 
 // ---------------- IPC ----------------
