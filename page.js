@@ -58,6 +58,7 @@
     save: () => svgIcon('0 0 24 24', ['M12 4v11', 'M7 10l5 5 5-5', 'M5 20h14'], { size: 16, width: 1.9 }),
     link: () => svgIcon('0 0 24 24', ['M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1', 'M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1'], { size: 16, width: 1.9 }),
     playSm: () => svgIcon('0 0 24 24', 'M8 5v14l11-7z', { size: 18, stroke: false }),
+    party: () => svgIcon('0 0 24 24', ['M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z', 'M2.5 20c.6-3.4 3.2-5.5 6.5-5.5s5.9 2.1 6.5 5.5', 'M16 4.3a3.5 3.5 0 0 1 0 6.4', 'M18 14.8c2 .7 3.2 2.5 3.5 5.2'], { size: 16, width: 1.9 }),
     translate: () => svgIcon('0 0 24 24', ['M4 5h9', 'M8.5 3v2', 'M11 5c-1 4-3.5 7-7 9', 'M6 9c1.2 2 3 3.6 5 4.5', 'M13 21l4-9 4 9', 'M14.5 18h5'], { size: 15, width: 1.8 })
   };
   const fmt = (s) => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
@@ -72,6 +73,8 @@
     seek(t) { const v = video(); if (v) v.currentTime = t; }
   };
   window.__ytmdControl = (a, x) => ctl[a] && ctl[a](x);
+  let GAME = false;   // oyun modu: arayüz güncellemeleri durur
+  const idle = () => document.hidden || GAME;
 
   // ---------------- Bildirim balonu ----------------
   const toastEl = el('div', { id: 'ytmd-toast' });
@@ -155,8 +158,8 @@
     if (lyricsOpen || fullOpen) loadLyricsFor(np);
     if (fullOpen) renderFullInfo(np);
   }
-  setInterval(() => { if (!document.hidden) tickNowPlaying(); }, 1000);
-  setInterval(() => { if (document.hidden) tickNowPlaying(); }, 5000);
+  setInterval(() => { if (!idle()) tickNowPlaying(); }, 1000);
+  setInterval(() => { if (idle()) tickNowPlaying(); }, 5000);
 
   // ---------------- Şarkı sözleri (panel + tam ekran ortak) ----------------
   let lyricsOpen = false;
@@ -183,6 +186,7 @@
   function setLyrics(open) {
     lyricsOpen = open;
     if (open && typeof setQueue === 'function') setQueue(false);
+    if (open && window.__ytmdParty) window.__ytmdParty(false);
     try { localStorage.setItem('ytmd-lyrics', open ? '1' : '0'); } catch (e) {}
     root.classList.toggle('ytmd-lyrics-open', open);
     if (open && current) { lyricsKey = ''; loadLyricsFor(current); }
@@ -279,6 +283,7 @@
     actBtn('Ses: hız, yumuşak geçiş, çıkış cihazı', ICON.speaker(), '', () => toggleAudioPop(), 'ytmd-audio-btn'),
     actBtn('Şarkı kartı paylaş', ICON.share(), '', () => openCard()),
     actBtn('Tam ekran', ICON.full(), '', () => setFull(true)),
+    actBtn('Birlikte dinle', ICON.party(), '', () => window.__ytmdParty && window.__ytmdParty(), 'ytmd-party-btn'),
     actBtn('Sıradakiler', ICON.queue(), '', () => setQueue(!queueOpen), 'ytmd-queue-btn'),
     actBtn('Şarkı sözleri', ICON.lyrics(), 'Sözler', () => setLyrics(!lyricsOpen), 'ytmd-lyrics-btn')
   ]));
@@ -609,7 +614,7 @@
     return { _set: (k, v) => { data[k] = v; }, mount, load, render, refresh: () => Object.keys(SOURCES).forEach((k, i) => setTimeout(() => load(k), i * 700)), parse };
   })();
   if (THEME) {
-    const tryMount = () => { if (!document.hidden && LIB.mount() === 'fresh') LIB.render(); };
+    const tryMount = () => { if (!idle() && LIB.mount() === 'fresh') LIB.render(); };
     tryMount();
     setInterval(tryMount, 3000);           // YouTube menüyü yeniden çizerse tekrar yerleştir
     setTimeout(() => LIB.refresh(), 2500); // açılışta tazele
@@ -730,9 +735,9 @@
   function setQueue(open) {
     queueOpen = open;
     root.classList.toggle('ytmd-queue-open', open);
-    if (open) { if (lyricsOpen) setLyrics(false); renderQueue(true); qBody.scrollTop = 0; }
+    if (open) { if (lyricsOpen) setLyrics(false); if (window.__ytmdParty) window.__ytmdParty(false); renderQueue(true); qBody.scrollTop = 0; }
   }
-  setInterval(() => { if (queueOpen && !document.hidden) renderQueue(false); }, 1500);
+  setInterval(() => { if (queueOpen && !idle()) renderQueue(false); }, 1500);
   window.__ytmdQueue = (o) => setQueue(o === undefined ? !queueOpen : !!o);
 
   // ---------------- Şarkı kartı (görsel olarak paylaş) ----------------
@@ -868,7 +873,7 @@
     async function tick() {
       const isHome = location.pathname === '/' || location.pathname === '/home' || (location.pathname === '/browse' && /FEmusic_home/.test(location.search));
       root.classList.toggle('ytmd-home-page', isHome && on);
-      if (!isHome || !on || busy || document.hidden) return;
+      if (!isHome || !on || busy || idle()) return;
       const sl = document.querySelector('ytmusic-browse-response ytmusic-section-list-renderer');
       const contents = sl && sl.querySelector(':scope > #contents');
       if (!contents) return;
@@ -909,7 +914,7 @@
     if (!muted && boost > 100) volEl.appendChild(el('small', { text: ' ×' + (boost / 100).toString().replace('.', ',') }));
     volEl.title = muted ? 'Ses kapalı' : 'Ses seviyesi: %' + v + (boost > 100 ? ' (yükseltme %' + boost + ')' : '');
   }
-  setInterval(() => { if (!document.hidden) tickVolume(); }, 1000);
+  setInterval(() => { if (!idle()) tickVolume(); }, 1000);
   document.addEventListener('volumechange', () => tickVolume(), true);
 
   // ---------------- Az bellek modu (pencere gizliyken) ----------------
@@ -917,6 +922,7 @@
   let lowPower = false, gcTimer = 0;
   const freeMem = () => { try { typeof window.gc === 'function' && window.gc(); } catch (e) {} };
   window.__ytmdLowPower = (on) => {
+    if (!on && GAME) return;   // oyun modunda pencere açılsa da düşük güçte kal
     if (on === lowPower) return;
     lowPower = on;
     const p = player();
@@ -1010,7 +1016,7 @@
     credit.classList.toggle('ytmd-hide', mode === 'hide');
   }
   window.__ytmdCredit = mountCredit;
-  mountCredit(); setInterval(() => { if (!document.hidden) mountCredit(); }, 2000);
+  mountCredit(); setInterval(() => { if (!idle()) mountCredit(); }, 2000);
   window.addEventListener('resize', () => setTimeout(mountCredit, 300));
 
   // ---------------- Güncelleme kartı ----------------
@@ -1034,6 +1040,341 @@
     updNotes.textContent = u.notes || 'Yeni özellikler ve düzeltmeler içeriyor.';
     updCard.classList.add('show');
   };
+
+  // ================= 2.0: Oyun modu · Telefondan kumanda · Akıllı sıra · Birlikte dinle =================
+  const PT = { code: '', host: false, id: '', status: '', members: new Map(), queue: [], pending: null, pendT: 0, lastSend: 0, beat: 0, ping: 0, open: false, results: [], searching: false, err: '' };
+  const visBar = () => [...document.querySelectorAll('ytmusic-player-bar')].find((b) => b.offsetWidth > 0) || document.querySelector('ytmusic-player-bar');
+  const ytApp = () => document.querySelector('ytmusic-app');
+  const navTo = (endpoint) => { const a = ytApp(); if (a) a.dispatchEvent(new CustomEvent('yt-navigate', { bubbles: true, composed: true, detail: { endpoint } })); };
+  const playId = (id, ep) => navTo(ep && ep.watchEndpoint ? ep : { watchEndpoint: { videoId: id } });
+  const curId = () => { try { return player().getVideoData().video_id || ''; } catch (e) { return (current && current.videoId) || ''; } };
+  const ytFetch = (p, body) => { const a = ytApp(); if (!a || !a.networkManager) return Promise.reject(new Error('nm')); return a.networkManager.fetch(p, body); };
+  const findAll = (o, key, out = [], d = 0) => {
+    if (!o || typeof o !== 'object' || d > 30 || out.length > 80) return out;
+    if (Array.isArray(o)) { for (const x of o) findAll(x, key, out, d + 1); return out; }
+    for (const k in o) { if (k === key) out.push(o[k]); else findAll(o[k], key, out, d + 1); }
+    return out;
+  };
+
+  // ---------- Oyun modu ----------
+  window.__ytmdGame = (on) => {
+    on = !!on; if (on === GAME) return; GAME = on;
+    root.classList.toggle('ytmd-game', on);
+    if (on) window.__ytmdLowPower(true); else if (!document.hidden) window.__ytmdLowPower(false);
+    toast(on ? 'Oyun modu açık: animasyonlar durdu, kaynak kullanımı en aza indi' : 'Oyun modu kapandı');
+  };
+
+  // ---------- Telefondan kumanda (ana işlem sorar) ----------
+  const likeR = () => { const b = visBar(); return b && b.querySelector('ytmusic-like-button-renderer'); };
+  function clickLike(dis) {
+    const r = likeR(); if (!r) return;
+    const b = r.querySelector(dis ? '#button-shape-dislike button' : '#button-shape-like button') || r.querySelectorAll('button')[dis ? 0 : 1];
+    b && b.click();
+  }
+  function setVol(v) {
+    v = Math.max(0, Math.min(100, Math.round(v)));
+    const b = visBar(), s = b && b.querySelector('#volume-slider');
+    if (s) { s.value = v; ['immediate-value-change', 'change'].forEach((t) => s.dispatchEvent(new CustomEvent(t, { bubbles: true, composed: true }))); }
+    else { try { player().setVolume(v); } catch (e) {} }
+  }
+  function remoteQueue() {
+    const q = queueState(); if (!q) return [];
+    const items = q.items || [], sel = q.selectedItemIndex || 0, out = [];
+    for (let i = sel + 1; i < items.length && out.length < 20; i++) { const x = qItem(items[i]); if (x) out.push({ i, title: x.title, artist: x.artist, art: x.art, len: x.len }); }
+    (q.automixItems || []).forEach((it, k) => { if (out.length >= 20) return; const x = qItem(it); if (x) out.push({ i: 1000 + k, title: x.title, artist: x.artist, art: x.art, len: x.len, auto: true }); });
+    return out;
+  }
+  window.__ytmdRemote = (cmd, v) => {
+    if (cmd === 'state') {
+      const b = visBar(), s = b && b.querySelector('#volume-slider'); let muted = false; try { muted = player().isMuted(); } catch (e) {}
+      const r = likeR();
+      return { vol: s ? Math.round(+s.value) : null, muted, like: r ? r.getAttribute('like-status') || 'INDIFFERENT' : '', queue: remoteQueue(), smart: SQ.mode, partyRoom: PT.code ? { code: PT.code, host: PT.host, n: PT.members.size + 1 } : null };
+    }
+    if (cmd === 'vol') return setVol(v);
+    if (cmd === 'mute') { const btn = visBar() && visBar().querySelector('#right-controls .volume'); if (btn) btn.click(); else { try { const p = player(); p.isMuted() ? p.unMute() : p.mute(); } catch (e) {} } return; }
+    if (cmd === 'like' || cmd === 'dislike') return clickLike(cmd === 'dislike');
+    if (cmd === 'shuffle' || cmd === 'repeat') { const btn = visBar() && visBar().querySelector('.' + cmd); btn && btn.click(); return; }
+    if (cmd === 'play') {
+      const q = queueState(); if (!q) return;
+      if (v >= 1000) { const x = qItem((q.automixItems || [])[v - 1000]); if (x) qPlay(-1, x, true); }
+      else { const x = qItem((q.items || [])[v]); if (x) qPlay(v, x, false); }
+    }
+  };
+
+  // ---------- Akıllı sıra ----------
+  const SQ = { mode: 'off', pick: null, cur: null, plan: 0, played: [], firedFor: '' };
+  try { SQ.mode = localStorage.getItem('ytmd-smart') || 'off'; } catch (e) {}
+  if (!['off', 'calm', 'same', 'up'].includes(SQ.mode)) SQ.mode = 'off';
+  const SQ_MODES = [['off', 'Kapalı'], ['calm', 'Sakinleş'], ['same', 'Aynı hava'], ['up', 'Hızlan']];
+  const SQ_DELTA = { calm: -0.14, same: 0, up: 0.14 };
+  const sqInfo = el('div', { class: 'ytmd-sq-info' });
+  const sqChips = el('div', { class: 'ytmd-sq-chips' }, SQ_MODES.map(([k, t]) => el('button', { class: 'ytmd-sq-chip', 'data-k': k, text: t, onclick: () => sqSet(k) })));
+  const sqBox = el('div', { class: 'ytmd-sq' }, [
+    el('div', { class: 'ytmd-sq-h' }, [el('b', { text: 'Akıllı sıra' }), el('span', { text: 'Çalanın enerjisine (BPM, ses gücü) göre sıradakini seçer' })]),
+    sqChips, sqInfo
+  ]);
+  qPanel.insertBefore(sqBox, qBody);
+  const pct = (e) => (e >= 0 ? '%' + Math.round(e * 100) : '?');
+  function sqRender() {
+    sqChips.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.getAttribute('data-k') === SQ.mode));
+    const kids = [];
+    if (PT.code && !PT.host) kids.push(el('span', { text: 'Birlikte dinlerken sırayı oda sahibi belirler' }));
+    else if (SQ.mode !== 'off') {
+      if (SQ.cur) kids.push(el('span', { text: 'Şu an enerji ' + pct(SQ.cur.e) + (SQ.cur.bpm ? ' · ' + SQ.cur.bpm + ' BPM' : '') }));
+      if (SQ.pick) kids.push(el('div', { class: 'ytmd-sq-pick', title: 'Tıkla, hemen çal', onclick: () => sqPlay() }, [
+        el('small', { text: 'Sıradaki seçim' }), el('b', { text: SQ.pick.x.title }), el('span', { text: SQ.pick.x.artist + ' · enerji ' + pct(SQ.pick.e) })
+      ]));
+      else kids.push(el('span', { text: SQ.plan ? 'Uygun şarkı aranıyor…' : 'Bir şarkı çalınca sıradaki seçilecek' }));
+    }
+    sqInfo.replaceChildren(...kids);
+  }
+  function sqSet(k) {
+    SQ.mode = k; SQ.pick = null; try { localStorage.setItem('ytmd-smart', k); } catch (e) {}
+    sqRender();
+    if (k !== 'off') { sqPlan(); toast('Akıllı sıra: ' + SQ_MODES.find((m) => m[0] === k)[1]); }
+  }
+  async function sqCandidates(id) {
+    const out = [], seen = new Set([id]);
+    const add = (x, i, auto) => { if (x && x.id && !seen.has(x.id)) { seen.add(x.id); out.push({ ...x, i, auto }); } };
+    const q = queueState();
+    if (q) {
+      const items = q.items || [], sel = q.selectedItemIndex || 0;
+      for (let i = sel + 1; i < items.length && out.length < 18; i++) add(qItem(items[i]), i, false);
+      (q.automixItems || []).forEach((it, k) => add(qItem(it), k, true));
+    }
+    if (out.length < 10) {
+      try {
+        const r = await ytFetch('/next', { videoId: id, playlistId: 'RDAMVM' + id, isAudioOnly: true });
+        findAll(r, 'playlistPanelVideoRenderer').forEach((pv) => add(qItem({ playlistPanelVideoRenderer: pv }), -1, 'radio'));
+      } catch (e) {}
+    }
+    return out.slice(0, 25);
+  }
+  async function sqPlan() {
+    if (SQ.mode === 'off' || (PT.code && !PT.host) || !api.energy) { sqRender(); return; }
+    const np = current; if (!np || !np.videoId) return;
+    const token = ++SQ.plan; sqRender();
+    const cands = await sqCandidates(np.videoId);
+    if (token !== SQ.plan || np.videoId !== curId()) return;
+    let en = {};
+    try { en = (await api.energy([{ id: np.videoId, title: np.title, artist: np.artist }, ...cands.map((c) => ({ id: c.id, title: c.title, artist: c.artist }))])) || {}; } catch (e) {}
+    if (token !== SQ.plan) return;
+    const cur = en[np.videoId] || { e: -1, bpm: 0 };
+    SQ.cur = cur;
+    const target = Math.max(0, Math.min(1, (cur.e >= 0 ? cur.e : 0.5) + SQ_DELTA[SQ.mode]));
+    const recentArtists = SQ.played.slice(-3).map((p) => p.a);
+    const mainArtist = (s) => String(s || '').split(/,|&| ve | x /)[0].trim().toLowerCase();
+    let best = null;
+    for (const c of cands) {
+      const e = en[c.id] ? en[c.id].e : -1;
+      let s = e >= 0 ? -Math.abs(e - target) : -0.32;
+      if (SQ.played.some((p) => p.id === c.id)) s -= 1;
+      if (recentArtists.includes(mainArtist(c.artist))) s -= 0.08;
+      if (c.auto === false) s += 0.03;
+      if (!best || s > best.s) best = { x: c, e, s };
+    }
+    SQ.pick = best; SQ.plan = 0; sqRender();
+  }
+  function sqPlay() {
+    const p = SQ.pick; if (!p) return false;
+    SQ.pick = null; sqRender();
+    const x = p.x;
+    if (x.auto === false && x.i >= 0) { const q = queueState(); const it = q && qItem((q.items || [])[x.i]); if (it && it.id === x.id) { qPlay(x.i, x, false); return true; } }
+    playId(x.id, x.ep); return true;
+  }
+  trackListeners.push((np) => {
+    SQ.played.push({ id: np.videoId, a: String(np.artist || '').split(/,|&| ve | x /)[0].trim().toLowerCase() });
+    if (SQ.played.length > 40) SQ.played.shift();
+    SQ.pick = null; SQ.cur = null;
+    if (SQ.mode !== 'off') setTimeout(sqPlan, 1500);
+  });
+  sqRender();
+
+  // ---------- Sonraki şarkı: ortak sıra > akıllı seçim > YouTube ----------
+  function nextOverride() {
+    if (PT.code && !PT.host) { api.party && api.party('send', { t: 'skip' }); toast('Oda sahibine "sonraki" isteği gönderildi'); return true; }
+    if (PT.code && PT.host && PT.queue.length) { const it = PT.queue.shift(); playId(it.v); ptHostSend(); ptRender(); return true; }
+    if (SQ.mode !== 'off' && SQ.pick) return sqPlay();
+    return false;
+  }
+  const ytNext = ctl.next;
+  ctl.next = () => { if (!nextOverride()) ytNext(); };
+  document.addEventListener('click', (e) => {
+    if (!e.isTrusted) return;
+    const nb = e.target.closest && e.target.closest('ytmusic-player-bar .next-button');
+    if (nb && nextOverride()) { e.preventDefault(); e.stopImmediatePropagation(); }
+  }, true);
+  document.addEventListener('timeupdate', (e) => {
+    const v = e.target; if (!(v instanceof HTMLVideoElement) || v.paused || !isFinite(v.duration) || v.duration < 20) return;
+    const rem = (v.duration - v.currentTime) / (v.playbackRate || 1);
+    if (rem > 0.9) return;
+    const id = curId(); if (SQ.firedFor === id) return;
+    if (PT.code && !PT.host) { SQ.firedFor = id; ctl.pause(); return; }   // misafir: oda sahibinin sıradaki şarkısını bekle
+    if ((PT.code && PT.host && PT.queue.length) || (SQ.mode !== 'off' && SQ.pick)) { SQ.firedFor = id; nextOverride(); }
+  }, true);
+
+  // ---------- Birlikte dinle ----------
+  const ptStatusTxt = { connecting: 'Bağlanıyor…', online: 'Bağlı', reconnecting: 'Bağlantı koptu, tekrar deneniyor…', limited: 'Aktarım sunucusunun günlük sınırı doldu' };
+  const ptBody = el('div', { class: 'ytmd-pt-body' });
+  const ptPanel = el('div', { id: 'ytmd-party' }, [
+    el('div', { class: 'ytmd-ly-head' }, [
+      el('div', {}, [el('div', { class: 'ytmd-ly-label', text: 'Birlikte dinle' }), el('div', { class: 'ytmd-ly-track', text: 'Arkadaşlarınla aynı anda aynı şarkı' })]),
+      el('button', { class: 'ytmd-ly-close', title: 'Kapat', onclick: () => setParty(false) }, [ICON.close()])
+    ]),
+    ptBody
+  ]);
+  root.appendChild(ptPanel);
+  function setParty(open) {
+    PT.open = open; root.classList.toggle('ytmd-party-open', open);
+    if (open) { if (lyricsOpen) setLyrics(false); if (queueOpen) setQueue(false); ptRender(); }
+  }
+  window.__ytmdParty = (o) => setParty(o === undefined ? !PT.open : !!o);
+  const ptMemberSeen = (m) => { if (m.from) PT.members.set(m.from, { name: String(m.name || 'Dinleyici').slice(0, 24), seen: Date.now(), host: m.t === 'state' || (PT.members.get(m.from) || {}).host }); };
+  const ptItem = (x, by) => ({ v: x.id || x.v, title: String(x.title || '').slice(0, 120), artist: String(x.artist || '').slice(0, 80), art: /^https:\/\//.test(x.art || '') ? String(x.art).slice(0, 300) : '', by: String(by || '').slice(0, 24) });
+  function ptHostSend() {
+    if (!PT.code || !PT.host || !api.party) return;
+    const v = video(), np = current;
+    if (!np || !np.videoId) return;
+    PT.lastSend = Date.now();
+    api.party('send', { t: 'state', v: np.videoId, title: np.title, artist: np.artist, art: (np.artwork || '').replace(/=w\d+-h\d+/, '=w120-h120'), pos: v ? Math.round(v.currentTime * 10) / 10 : 0, paused: v ? v.paused : true, q: PT.queue.slice(0, 15) });
+  }
+  let ptDeb = 0;
+  const ptHostSoon = () => { if (PT.code && PT.host) { clearTimeout(ptDeb); ptDeb = setTimeout(ptHostSend, 500); } };
+  ['play', 'pause', 'seeked'].forEach((ev) => document.addEventListener(ev, (e) => { if (e.target instanceof HTMLVideoElement) ptHostSoon(); }, true));
+  trackListeners.push(() => { if (PT.code && PT.host) setTimeout(ptHostSend, 1200); });
+  function ptSync(pos, paused, at) {
+    const v = video(); if (!v || !isFinite(v.duration) || v.duration <= 0) return false;
+    const target = pos + (paused ? 0 : (Date.now() - at) / 1000 + 0.25);
+    if (Math.abs(v.currentTime - target) > 1.8 && target < v.duration - 1) v.currentTime = Math.max(0, target);
+    if (paused && !v.paused) ctl.pause();
+    if (!paused && v.paused) { try { player().playVideo(); } catch (e) { v.play().catch(() => {}); } }
+    return true;
+  }
+  function ptGuestState(m) {
+    PT.queue = Array.isArray(m.q) ? m.q.slice(0, 15).map((x) => ptItem(x, x.by)) : [];
+    if (!/^[\w-]{6,20}$/.test(m.v || '')) return;
+    const at = Date.now();
+    PT.pending = { v: m.v, pos: +m.pos || 0, paused: !!m.paused, at };
+    SQ.firedFor = '';
+    if (curId() !== m.v) playId(m.v);
+    clearInterval(PT.pendT);
+    let tries = 0;
+    PT.pendT = setInterval(() => {
+      const p = PT.pending; if (!p || ++tries > 30) { clearInterval(PT.pendT); return; }
+      if (curId() === p.v && ptSync(p.pos, p.paused, p.at)) { PT.pending = null; clearInterval(PT.pendT); }
+    }, 500);
+  }
+  window.__ytmdPartyMsg = (m) => {
+    if (!m || typeof m !== 'object' || !PT.code) return;
+    if (m.t === 'bye') {
+      const was = PT.members.get(m.from); PT.members.delete(m.from);
+      if (was) toast(was.name + ' odadan ayrıldı' + (was.host ? ' (oda sahibi)' : ''));
+      ptRender(); return;
+    }
+    const isNew = !PT.members.has(m.from);
+    ptMemberSeen(m);
+    if (PT.host) {
+      if (m.t === 'hello') { if (isNew) toast((m.name || 'Biri') + ' odaya katıldı'); ptHostSend(); }
+      else if (m.t === 'add' && m.item && /^[\w-]{6,20}$/.test(m.item.v || '')) {
+        if (!PT.queue.some((x) => x.v === m.item.v) && PT.queue.length < 30) { PT.queue.push(ptItem(m.item, m.name)); toast((m.name || 'Biri') + ' sıraya ekledi: ' + String(m.item.title || '').slice(0, 40)); ptHostSend(); }
+      } else if (m.t === 'skip') { toast((m.name || 'Biri') + ' sonraki şarkıya geçti'); ctl.next(); }
+    } else if (m.t === 'state') ptGuestState(m);
+    else if (m.t === 'hello' && isNew) toast((m.name || 'Biri') + ' odaya katıldı');
+    ptRender();
+  };
+  window.__ytmdPartyStatus = (s) => {
+    if (!s) { PT.code = ''; PT.host = false; PT.members.clear(); PT.queue = []; PT.pending = null; clearInterval(PT.beat); clearInterval(PT.ping); ptRender(); sqRender(); return; }
+    const fresh = PT.code !== s.code;
+    PT.code = s.code; PT.host = !!s.host; PT.id = s.id; PT.status = s.status;
+    if (fresh) {
+      PT.members.clear(); PT.queue = []; clearInterval(PT.beat); clearInterval(PT.ping);
+      // Az mesaj: oda sahibi sadece olaylarda + 2,5 dakikada bir; misafir 4 dakikada bir "buradayım" der
+      if (PT.host) PT.beat = setInterval(() => { if (PT.members.size && Date.now() - PT.lastSend > 150000) ptHostSend(); }, 30000);
+      else PT.ping = setInterval(() => api.party && api.party('send', { t: 'ping' }), 240000);
+    }
+    ptRender(); sqRender();
+  };
+  setInterval(() => { if (!PT.code) return; let ch = false; for (const [k, m] of PT.members) if (Date.now() - m.seen > 6 * 60000) { PT.members.delete(k); ch = true; } if (ch) ptRender(); }, 60000);
+  async function ptSearch(q) {
+    q = String(q || '').trim(); if (!q) return;
+    PT.searching = true; ptRender();
+    try {
+      const r = await ytFetch('/search', { query: q, params: 'EgWKAQIIAWoKEAkQBRAKEAMQBA%3D%3D' });
+      PT.results = findAll(r, 'musicResponsiveListItemRenderer').map((x) => {
+        const id = (x.playlistItemData && x.playlistItemData.videoId) || '';
+        const col = (i) => rtxt(x.flexColumns && x.flexColumns[i] && x.flexColumns[i].musicResponsiveListItemFlexColumnRenderer.text);
+        const parts = col(1).split(' • '); const artist = /^(şarkı|song)$/i.test(parts[0]) ? parts[1] || '' : parts[0];
+        const th = x.thumbnail && x.thumbnail.musicThumbnailRenderer && x.thumbnail.musicThumbnailRenderer.thumbnail.thumbnails;
+        return id ? { id, title: col(0), artist, art: th && th.length ? th[0].url : '' } : null;
+      }).filter(Boolean).slice(0, 12);
+    } catch (e) { PT.results = []; toast('Arama yapılamadı'); }
+    PT.searching = false; ptRender();
+  }
+  function ptAdd(x) {
+    const item = ptItem(x, 'Sen');
+    if (PT.host) { if (PT.queue.some((y) => y.v === item.v)) return toast('Zaten sırada'); PT.queue.push(item); ptHostSend(); }
+    else api.party && api.party('send', { t: 'add', item });
+    toast('Ortak sıraya eklendi: ' + item.title.slice(0, 40)); ptRender();
+  }
+  async function ptJoin(code, host) {
+    if (!api.party) return;
+    PT.err = '';
+    const r = await api.party('join', host ? null : code, !!host);
+    if (!r || !r.ok) { PT.err = (r && r.error) || 'Odaya girilemedi'; ptRender(); return; }
+    window.__ytmdPartyStatus({ code: r.code, host: r.host, id: r.id, status: 'connecting' });
+    toast(host ? 'Oda kuruldu: ' + r.code : 'Odaya katılınıyor: ' + r.code);
+  }
+  let ptSearchVal = '';
+  function ptRender() {
+    if (!PT.open) return;
+    const kids = [];
+    if (!PT.code) {
+      const name = el('input', { class: 'ytmd-pt-in', placeholder: 'Adın (arkadaşların görür)', maxlength: '24' });
+      api.party && api.party('info').then((i) => { if (i && i.name && !name.value) name.value = i.name; });
+      name.addEventListener('change', () => api.party && api.party('name', name.value));
+      const code = el('input', { class: 'ytmd-pt-in code', placeholder: 'ABCD-EF23', maxlength: '9' });
+      code.addEventListener('keydown', (e) => { if (e.key === 'Enter') ptJoin(code.value, false); });
+      kids.push(
+        el('div', { class: 'ytmd-pt-h', text: 'Adın' }), name,
+        el('button', { class: 'ytmd-pt-btn primary', text: 'Oda oluştur', onclick: () => ptJoin(null, true) }),
+        el('div', { class: 'ytmd-pt-h', text: 'Ya da arkadaşının kodunu gir' }),
+        el('div', { class: 'ytmd-pt-row' }, [code, el('button', { class: 'ytmd-pt-btn', text: 'Katıl', onclick: () => ptJoin(code.value, false) })]),
+        PT.err ? el('div', { class: 'ytmd-pt-err', text: PT.err }) : null,
+        el('div', { class: 'ytmd-pt-note', text: 'Oda kodunu bilen herkes katılabilir. Mesajlar uçtan uca şifrelenir ve ücretsiz ntfy.sh sunucusu üzerinden iletilir; sunucu içeriği göremez.' })
+      );
+    } else {
+      kids.push(el('div', { class: 'ytmd-pt-code' }, [
+        el('div', {}, [el('small', { text: PT.host ? 'Oda kodun (arkadaşlarına gönder)' : 'Katıldığın oda' }), el('b', { text: PT.code })]),
+        el('button', { class: 'ytmd-pt-btn', title: 'Kodu kopyala', onclick: () => { navigator.clipboard.writeText(PT.code).then(() => toast('Kod kopyalandı'), () => {}); } }, [ICON.copy()])
+      ]));
+      kids.push(el('div', { class: 'ytmd-pt-status ' + PT.status, text: ptStatusTxt[PT.status] || PT.status }));
+      kids.push(el('div', { class: 'ytmd-pt-h', text: 'Dinleyenler (' + (PT.members.size + 1) + ')' }));
+      const mem = [el('span', { class: 'ytmd-pt-mem me', text: 'Sen' + (PT.host ? ' · oda sahibi' : '') })];
+      for (const m of PT.members.values()) mem.push(el('span', { class: 'ytmd-pt-mem', text: m.name + (m.host && !PT.host ? ' · oda sahibi' : '') }));
+      kids.push(el('div', { class: 'ytmd-pt-mems' }, mem));
+      if (!PT.members.size) kids.push(el('div', { class: 'ytmd-pt-note', text: PT.host ? 'Kodu arkadaşına gönder; o da "Birlikte dinle"den kodu girsin.' : 'Oda sahibine bağlanılıyor…' }));
+      kids.push(el('div', { class: 'ytmd-pt-h', text: 'Ortak sıra' }));
+      if (PT.queue.length) PT.queue.forEach((x, i) => kids.push(el('div', { class: 'ytmd-q-row' }, [
+        el('div', { class: 'ytmd-q-art' }, [x.art ? el('img', { class: 'ytmd-q-cover', src: x.art, alt: '', loading: 'lazy' }) : el('div', { class: 'ytmd-q-cover' })]),
+        el('div', { class: 'ytmd-q-meta' }, [el('div', { class: 'ytmd-q-title', text: x.title }), el('div', { class: 'ytmd-q-sub', text: x.artist + (x.by ? ' · ' + x.by + ' ekledi' : '') })]),
+        PT.host ? el('button', { class: 'ytmd-pt-x', title: 'Sıradan çıkar', onclick: () => { PT.queue.splice(i, 1); ptHostSend(); ptRender(); } }, [ICON.close(10)]) : null
+      ])));
+      else kids.push(el('div', { class: 'ytmd-pt-note', text: 'Sıra boş. Aşağıdan şarkı ara ve ekle; şu anki şarkı bitince sıradan devam edilir.' }));
+      const s = el('input', { class: 'ytmd-pt-in', placeholder: 'Şarkı ara ve sıraya ekle…', value: ptSearchVal });
+      s.addEventListener('input', () => { ptSearchVal = s.value; });
+      s.addEventListener('keydown', (e) => { if (e.key === 'Enter') ptSearch(s.value); });
+      kids.push(el('div', { class: 'ytmd-pt-row' }, [s, el('button', { class: 'ytmd-pt-btn', text: PT.searching ? '…' : 'Ara', onclick: () => ptSearch(s.value) })]));
+      PT.results.forEach((x) => kids.push(el('div', { class: 'ytmd-q-row' }, [
+        el('div', { class: 'ytmd-q-art' }, [x.art ? el('img', { class: 'ytmd-q-cover', src: x.art, alt: '', loading: 'lazy' }) : el('div', { class: 'ytmd-q-cover' })]),
+        el('div', { class: 'ytmd-q-meta' }, [el('div', { class: 'ytmd-q-title', text: x.title }), el('div', { class: 'ytmd-q-sub', text: x.artist })]),
+        el('button', { class: 'ytmd-pt-btn add', text: '+ Ekle', onclick: () => ptAdd(x) })
+      ])));
+      kids.push(el('button', { class: 'ytmd-pt-btn danger', text: 'Odadan ayrıl', onclick: () => { api.party && api.party('leave'); window.__ytmdPartyStatus(null); PT.results = []; toast('Odadan ayrıldın'); } }));
+    }
+    const focused = document.activeElement && ptBody.contains(document.activeElement) ? document.activeElement.className : '';
+    ptBody.replaceChildren(...kids.filter(Boolean));
+    if (focused) { const f = ptBody.querySelector('input.' + focused.split(' ').join('.')); if (f) { f.focus(); f.setSelectionRange(f.value.length, f.value.length); } }
+  }
 
   // ---------------- Ayarları uygula (ana işlem çağırır) ----------------
   window.__ytmdApply = (s = {}) => {
