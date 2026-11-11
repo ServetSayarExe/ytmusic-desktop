@@ -61,6 +61,13 @@
   .eq.off { opacity: .4; pointer-events: none; }
   .prog { height: 6px; border-radius: 6px; background: rgba(255,255,255,.1); margin-top: 8px; overflow: hidden; display: none; }
   .prog.on { display: block; }
+  textarea { width: 100%; min-height: 110px; background: rgba(255,255,255,.06); color: #fff; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 10px 12px; font: 13px/1.5 Consolas, "Cascadia Mono", monospace; resize: vertical; }
+  input.txt { background: rgba(255,255,255,.06); color: #fff; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 8px 12px; font: inherit; width: 220px; }
+  .pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: rgba(255,255,255,.1); margin-left: 8px; vertical-align: middle; }
+  .pill.on { background: var(--accent); }
+  .qrwrap { display: flex; gap: 20px; align-items: center; padding: 16px 18px; }
+  .qrwrap canvas { background: #fff; border-radius: 12px; padding: 0; flex: none; }
+  .qrwrap code { word-break: break-all; font-size: 12.5px; color: rgba(255,255,255,.8); }
   .prog i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 6px; transition: width .4s; }
 </style>
 </head>
@@ -71,6 +78,9 @@
     <a data-go="gorunum" class="on">Görünüm</a>
     <a data-go="ses">Ses ve ekolayzer</a>
     <a data-go="uyku">Uyku zamanlayıcı</a>
+    <a data-go="oyun">Oyun modu</a>
+    <a data-go="kumanda">Telefondan kumanda</a>
+    <a data-go="parti">Birlikte dinle</a>
     <a data-go="baglantilar">Bağlantılar</a>
     <a data-go="istatistik">İstatistikler</a>
     <a data-go="hakkinda">Güncelleme</a>
@@ -128,6 +138,42 @@
           <button class="btn chip" data-sleep="track">Bu şarkı bitince</button>
           <button class="btn chip" data-sleep="off">Kapat</button>
         </div></div>
+      </div>
+    </section>
+
+    <section id="oyun">
+      <h2>Oyun modu <span class="pill" id="gameState">Kapalı</span></h2>
+      <div class="box">
+        <div class="item"><div class="txt"><b>Oyun modu</b><span>Animasyonları dondurur, görüntüyü en düşük kaliteye alır, belleği boşaltır ve uygulamayı düşük önceliğe çeker. Müzik kesilmez. Kısayol: Ctrl+Shift+G</span></div>
+          <button class="btn primary" id="gameBtn">Aç</button></div>
+        <div class="item"><div class="txt"><b>Oyun açılınca otomatik</b><span id="gameAutoTxt">Aşağıdaki oyunlardan biri çalışınca oyun modu kendiliğinden açılır, oyun kapanınca kapanır</span></div>
+          <label class="sw"><input type="checkbox" id="gameAuto"><i></i></label></div>
+        <div class="item" style="display:block"><div class="txt" style="margin-bottom:8px"><b>Oyun listesi</b><span>Her satıra bir .exe adı. Görev Yöneticisi → Ayrıntılar sekmesinde görebilirsin.</span></div>
+          <textarea id="gameList" spellcheck="false"></textarea>
+          <div style="margin-top:8px;display:flex;gap:8px"><button class="btn" id="gameSave">Listeyi kaydet</button><button class="btn" id="gameReset">Varsayılana dön</button></div></div>
+      </div>
+    </section>
+
+    <section id="kumanda">
+      <h2>Telefondan kumanda</h2>
+      <div class="box">
+        <div class="item"><div class="txt"><b>Telefondan kumandayı aç</b><span>Aynı Wi-Fi'daki telefonundan duraklat, şarkı geç, ses aç-kıs, sıradan seç. Uygulama yüklemen gerekmez; kamerayla QR'ı okut.</span></div>
+          <label class="sw"><input type="checkbox" id="remoteOn"><i></i></label></div>
+        <div id="remoteBox" style="display:none">
+          <div class="qrwrap"><canvas id="qr" width="180" height="180"></canvas>
+            <div><b id="remoteState">Hazırlanıyor…</b><p class="muted" style="margin:6px 0 10px">Telefonun kamerasını QR'a tut ve açılan bağlantıya dokun. İlk açılışta Windows "erişime izin ver" sorarsa <b>Özel ağlar</b>'ı onayla.</p><code id="remoteUrl"></code></div></div>
+          <div class="item"><div class="txt"><b>Bağlantıyı yenile</b><span>Eski bağlantı adresi geçersiz olur; daha önce bağlanan telefonlar tekrar QR okutmalı</span></div>
+            <button class="btn" id="remoteReset">Yeni bağlantı</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="parti">
+      <h2>Birlikte dinle</h2>
+      <div class="box">
+        <div class="item"><div class="txt"><b>Adın</b><span>Odadaki arkadaşların seni bu adla görür</span></div>
+          <input class="txt" id="partyName" maxlength="24" placeholder="Adın"></div>
+        <div class="item"><div class="txt"><b id="partyState">Bir odada değilsin</b><span>Oda kurmak ya da katılmak için sağ alttaki "Birlikte dinle" düğmesine bas. Mesajlar uçtan uca şifrelenir, ücretsiz ntfy.sh aktarıcısı içeriği göremez.</span></div></div>
       </div>
     </section>
 
@@ -263,6 +309,8 @@
     $('boost').value = s.boost || 100; $('boost').oninput();
     $('goal').value = String(s.dailyGoal || 30);
     loadDevices(s.outputDevice || '');
+    $('partyName').value = s.partyName || '';
+    refreshFeatures();
   });
   $('cf').oninput = () => { $('cfLbl').textContent = +$('cf').value ? $('cf').value + ' saniye' : 'Kapalı'; };
   $('cf').onchange = () => set('crossfade', +$('cf').value);
@@ -279,6 +327,42 @@
     sel.value = cur;
   }
   $('dev').onfocus = () => loadDevices($('dev').value);
+
+  // 2.0: oyun modu, kumanda, birlikte dinle
+  let FI = null;
+  function drawQR(q) {
+    const c = $('qr'), x = c.getContext('2d');
+    x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+    if (!q) return;
+    const n = q.size + 8, cell = Math.floor(c.width / n), off = Math.floor((c.width - cell * n) / 2) + cell * 4;
+    x.fillStyle = '#000';
+    q.modules.forEach((row, y) => row.forEach((on, i) => { if (on) x.fillRect(off + i * cell, off + y * cell, cell, cell); }));
+  }
+  let lastUrl = null;
+  async function refreshFeatures() {
+    FI = await window.ytmd.featureInfo(); if (!FI) return;
+    const g = FI.game;
+    $('gameState').textContent = g.active ? (g.detected && !g.manual ? 'Açık · ' + g.detected.replace(/\.exe$/i, '') : 'Açık') : 'Kapalı';
+    $('gameState').classList.toggle('on', g.active);
+    $('gameBtn').textContent = g.active ? 'Kapat' : 'Aç';
+    $('gameAuto').checked = g.auto;
+    if (document.activeElement !== $('gameList') && !$('gameList').dataset.dirty) $('gameList').value = (g.list || []).join('\n');
+    const r = FI.remote;
+    $('remoteOn').checked = r.on; $('remoteBox').style.display = r.on ? '' : 'none';
+    $('remoteState').textContent = !r.on ? '' : r.running ? (r.clients ? r.clients + ' cihaz bağlı' : 'Hazır — telefonla okut') : 'Başlatılamadı (port kullanımda olabilir)';
+    $('remoteUrl').textContent = r.url || '';
+    if (r.url !== lastUrl) { lastUrl = r.url; drawQR(r.qr); }
+    $('partyState').textContent = FI.party ? 'Odadasın: ' + FI.party.code + (FI.party.host ? ' (oda sahibi)' : '') : 'Bir odada değilsin';
+  }
+  $('gameBtn').onclick = () => { window.ytmd.setSetting('gameManual', !(FI && FI.game.active)); setTimeout(refreshFeatures, 200); };
+  $('gameAuto').onchange = () => { window.ytmd.setSetting('gameAuto', $('gameAuto').checked); setTimeout(refreshFeatures, 300); };
+  $('gameList').oninput = () => { $('gameList').dataset.dirty = '1'; };
+  $('gameSave').onclick = () => { window.ytmd.setSetting('gameList', $('gameList').value); delete $('gameList').dataset.dirty; setTimeout(refreshFeatures, 200); };
+  $('gameReset').onclick = () => { window.ytmd.setSetting('gameList', FI ? FI.gameDefault : []); delete $('gameList').dataset.dirty; setTimeout(refreshFeatures, 200); };
+  $('remoteOn').onchange = () => { window.ytmd.setSetting('remote', $('remoteOn').checked); setTimeout(refreshFeatures, 400); };
+  $('remoteReset').onclick = () => { if (confirm('Yeni bağlantı oluşturulsun mu? Bağlı telefonların bağlantısı kesilir.')) { window.ytmd.setSetting('remoteReset', true); setTimeout(refreshFeatures, 500); } };
+  $('partyName').onchange = () => window.ytmd.setSetting('partyName', $('partyName').value);
+  setInterval(refreshFeatures, 2000);
 </script>
 </body>
 </html>
