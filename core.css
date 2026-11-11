@@ -312,5 +312,14 @@ ytmusic-responsive-list-item-renderer ytmusic-item-thumbnail-overlay-renderer yt
 #ytmd-credit a { color: rgba(255, 255, 255, 0.85); text-decoration: none; font-weight: 600; cursor: pointer; -webkit-app-region: no-drag; }
 #ytmd-credit a:hover { color: var(--ytmd-accent); text-decoration: underline; }
 #ytmd-credit.ytmd-hide { visibility: hidden; }
-#ytmd-credit.ytmd-stack { display: flex; flex-direction: column; line-height: 1.2; font-size: 11px; }
-#ytmd-credit.ytmd-stack a { font-size: 12px; }
+/* İki parça ayrı konumlanır; tek satır <-> iki satır geçişi kayarak (animasyonlu) olur */
+#ytmd-credit { height: 34px; line-height: 1.2; pointer-events: none; transition: opacity .25s ease; }
+#ytmd-credit.ytmd-hide { opacity: 0; }
+#ytmd-credit .ytmd-cr-by, #ytmd-credit a {
+  position: absolute; left: 0; top: 50%; white-space: nowrap; transform-origin: left center;
+  transition: transform .45s cubic-bezier(.2, .8, .2, 1), font-size .45s cubic-bezier(.2, .8, .2, 1);
+}
+#ytmd-credit .ytmd-cr-by { transform: translateY(-50%); }
+#ytmd-credit a { transform: translate(calc(var(--cr-bw, 50px) + 4px), -50%); pointer-events: auto; }
+#ytmd-credit.ytmd-stack .ytmd-cr-by { transform: translateY(-100%) scale(.92); }
+#ytmd-credit.ytmd-stack a { transform: translate(0, 2px); }
