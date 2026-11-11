@@ -2,6 +2,15 @@
 
 YouTube Music'i kendi penceresinde açan masaüstü uygulaması. Google hesabınla giriş yaparsın, Premium aboneliğin olduğu gibi çalışır.
 
+## 2.0 ile gelenler
+
+Hepsi varsayılan olarak kapalıdır; açmadığın özellik hiç kaynak kullanmaz.
+
+- **Birlikte dinle:** sağ alttaki kişiler simgesiyle oda kur, kodu arkadaşına gönder. Herkes aynı şarkıyı aynı anda dinler, ortak sıraya şarkı ekler. Mesajlar uçtan uca şifrelenir (ücretsiz ntfy.sh aktarıcısı içeriği göremez).
+- **Telefondan kumanda:** Ayarlar → Telefondan kumanda'yı aç, QR'ı telefonla okut. Aynı Wi-Fi'da duraklat, geç, ses, beğen, sıradan seç. Uygulama yüklemek gerekmez.
+- **Akıllı sıra:** Sıradakiler panelinde Sakinleş / Aynı hava / Hızlan. Çalanın BPM'i ve ses gücüne göre sıradaki şarkıyı seçer.
+- **Oyun modu:** Ctrl+Shift+G, tepsi menüsü ya da otomatik (oyun açılınca). Animasyonları dondurur, görüntüyü en düşük kaliteye alır, belleği boşaltır, uygulamayı düşük önceliğe çeker. Müzik kesilmez.
+
 ## 1.8 ile gelenler
 
 - **Şarkı sözü çevirisi:** sözler panelinde ve tam ekranda "Çeviri" düğmesi; her satırın altında Türkçesi çıkar
