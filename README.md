@@ -2,6 +2,12 @@
 
 YouTube Music'i kendi penceresinde açan masaüstü uygulaması. Google hesabınla giriş yaparsın, Premium aboneliğin olduğu gibi çalışır.
 
+## 2.1 ile gelenler
+
+- **Reklam atlayıcı:** Premium'u olmayan hesaplarda şarkı arası reklamlar sessize alınıp anında atlanır (Ayarlar → Bağlantılar).
+- **Discord:** durumda sanatçı adı görünür, şarkı adına tıklanabilir, "Uygulamayı indir" butonu en son sürümü indirir.
+- **Daha hızlı ve akıcı:** açılış hızlandı, kitaplığı genişletmek akıcı, alta alınca şarkı donmuyor, güncellemeler kendiliğinden bildiriliyor.
+
 ## 2.0 ile gelenler
 
 Hepsi varsayılan olarak kapalıdır; açmadığın özellik hiç kaynak kullanmaz.
