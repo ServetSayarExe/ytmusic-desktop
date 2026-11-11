@@ -972,14 +972,23 @@
     document.createTextNode('Made by '),
     el('a', { href: CREDIT_URL, target: '_blank', rel: 'noopener', title: 'Instagram: @servetsayarexe', onclick: (e) => { e.preventDefault(); e.stopPropagation(); window.open(CREDIT_URL, '_blank'); } }, [document.createTextNode('@servetsayarexe')])
   ]);
+  const creditW = { inline: 0, stack: 0 };
   function mountCredit() {
     const nav = document.querySelector('ytmusic-nav-bar');
     if (!nav) return;
     if (credit.parentElement !== nav) nav.appendChild(credit);
-    // Arama kutusu sola kaydıysa (menü kapalı / dar pencere) üstüne binmesin
+    // Yer varsa tek satır, azsa iki satır ("Made by" üstte, bağlantı altta), hiç yoksa gizle
+    if (!creditW.inline) {
+      credit.classList.remove('ytmd-stack'); creditW.inline = credit.offsetWidth;
+      credit.classList.add('ytmd-stack'); creditW.stack = credit.offsetWidth;
+      credit.classList.remove('ytmd-stack');
+      if (!creditW.inline) return;
+    }
     const sb = nav.querySelector('ytmusic-search-box');
-    const fits = !sb || sb.getBoundingClientRect().left >= 150 + (credit.offsetWidth || 145) + 14;
-    credit.classList.toggle('ytmd-hide', !fits);
+    const room = sb ? sb.getBoundingClientRect().left - 150 - 14 : 9999;
+    const mode = room >= creditW.inline ? 'inline' : room >= creditW.stack ? 'stack' : 'hide';
+    credit.classList.toggle('ytmd-stack', mode === 'stack');
+    credit.classList.toggle('ytmd-hide', mode === 'hide');
   }
   window.__ytmdCredit = mountCredit;
   mountCredit(); setInterval(() => { if (!document.hidden) mountCredit(); }, 2000);
