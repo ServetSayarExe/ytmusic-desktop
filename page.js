@@ -75,6 +75,7 @@
   window.__ytmdControl = (a, x) => ctl[a] && ctl[a](x);
   let GAME = false;   // oyun modu: arayüz güncellemeleri durur
   const idle = () => document.hidden || GAME;
+  const bootFns = [];   // açılışta YouTube menüyü çizer çizmez yerleşecek parçalar
 
   // ---------------- Bildirim balonu ----------------
   const toastEl = el('div', { id: 'ytmd-toast' });
@@ -615,7 +616,7 @@
   })();
   if (THEME) {
     const tryMount = () => { if (!idle() && LIB.mount() === 'fresh') LIB.render(); };
-    tryMount();
+    tryMount(); bootFns.push(tryMount);
     setInterval(tryMount, 3000);           // YouTube menüyü yeniden çizerse tekrar yerleştir
     setTimeout(() => LIB.refresh(), 2500); // açılışta tazele
     setInterval(() => LIB.refresh(), 10 * 60 * 1000);
@@ -886,7 +887,7 @@
     return { tick, set: (v) => { on = v; if (!on && box) box.remove(); built = on ? built : ''; builtAt = 0; tick(); }, refresh: () => { built = ''; builtAt = 0; recentAt = 0; tick(); } };
   })();
   if (THEME) {
-    setInterval(() => HOME.tick(), 2000);
+    setInterval(() => HOME.tick(), 2000); bootFns.push(() => HOME.tick());
     window.addEventListener('yt-navigate-finish', () => setTimeout(() => HOME.tick(), 200));
     trackListeners.push(() => setTimeout(() => HOME.refresh(), 40000));
   }
@@ -960,7 +961,7 @@
       new MutationObserver(applyGuide).observe(app, { attributes: true, attributeFilter: ['guide-collapsed'] });
       applyGuide();
     }
-    watch(); setInterval(watch, 5000);
+    watch(); bootFns.push(watch); setInterval(watch, 5000);
     window.addEventListener('resize', () => { clearTimeout(watch.t); watch.t = setTimeout(applyGuide, 250); });
     let drag = null;
     handle.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, w: gw }; handle.setPointerCapture(e.pointerId); root.classList.add('ytmd-guide-drag'); e.preventDefault(); });
@@ -1016,7 +1017,7 @@
     credit.classList.toggle('ytmd-hide', mode === 'hide');
   }
   window.__ytmdCredit = mountCredit;
-  mountCredit(); setInterval(() => { if (!idle()) mountCredit(); }, 2000);
+  mountCredit(); bootFns.push(mountCredit); setInterval(() => { if (!idle()) mountCredit(); }, 2000);
   window.addEventListener('resize', () => setTimeout(mountCredit, 300));
 
   // ---------------- Güncelleme kartı ----------------
@@ -1375,6 +1376,9 @@
     ptBody.replaceChildren(...kids.filter(Boolean));
     if (focused) { const f = ptBody.querySelector('input.' + focused.split(' ').join('.')); if (f) { f.focus(); f.setSelectionRange(f.value.length, f.value.length); } }
   }
+
+  // Açılışın ilk 9 saniyesi: parçaları 150 ms'de bir dene (sonra normal seyrek kontrollere döner)
+  { let n = 0; const id = setInterval(() => { for (const f of bootFns) { try { f(); } catch (e) {} } if (++n >= 60) clearInterval(id); }, 150); }
 
   // ---------------- Ayarları uygula (ana işlem çağırır) ----------------
   window.__ytmdApply = (s = {}) => {
