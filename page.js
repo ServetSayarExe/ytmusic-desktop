@@ -959,6 +959,7 @@
       if (!drag) return;
       gw = Math.max(GMIN, Math.min(GMAX, Math.round(drag.w + e.clientX - drag.x)));
       root.style.setProperty('--ytmd-guide-w', gw + 'px');
+      window.__ytmdCredit && window.__ytmdCredit();
     });
     const end = () => { if (!drag) return; drag = null; root.classList.remove('ytmd-guide-drag'); try { localStorage.setItem('ytmd-guide-w', String(gw)); } catch (e) {} mountCreditSoon(); };
     handle.addEventListener('pointerup', end); handle.addEventListener('pointercancel', end); handle.addEventListener('lostpointercapture', end);
@@ -968,8 +969,9 @@
 
   // ---------------- İmza: "Made by @servetsayarexe" ----------------
   const CREDIT_URL = 'https://www.instagram.com/servetsayarexe';
+  const creditBy = el('span', { class: 'ytmd-cr-by', text: 'Made by' });
   const credit = el('div', { id: 'ytmd-credit' }, [
-    document.createTextNode('Made by '),
+    creditBy,
     el('a', { href: CREDIT_URL, target: '_blank', rel: 'noopener', title: 'Instagram: @servetsayarexe', onclick: (e) => { e.preventDefault(); e.stopPropagation(); window.open(CREDIT_URL, '_blank'); } }, [document.createTextNode('@servetsayarexe')])
   ]);
   const creditW = { inline: 0, stack: 0 };
@@ -979,14 +981,18 @@
     if (credit.parentElement !== nav) nav.appendChild(credit);
     // Yer varsa tek satır, azsa iki satır ("Made by" üstte, bağlantı altta), hiç yoksa gizle
     if (!creditW.inline) {
-      credit.classList.remove('ytmd-stack'); creditW.inline = credit.offsetWidth;
-      credit.classList.add('ytmd-stack'); creditW.stack = credit.offsetWidth;
-      credit.classList.remove('ytmd-stack');
-      if (!creditW.inline) return;
+      const link = credit.querySelector('a');
+      const byW = creditBy.offsetWidth, aW = link ? link.offsetWidth : 0;
+      if (!byW || !aW) return;
+      creditW.inline = byW + 4 + aW; creditW.stack = Math.max(byW, aW);
+      credit.style.setProperty('--cr-bw', byW + 'px');
+      credit.style.width = creditW.inline + 'px';
     }
     const sb = nav.querySelector('ytmusic-search-box');
     const room = sb ? sb.getBoundingClientRect().left - 150 - 14 : 9999;
-    const mode = room >= creditW.inline ? 'inline' : room >= creditW.stack ? 'stack' : 'hide';
+    // Kitaplık dar haldeyken (300 pikselin altı) her zaman iki satır
+    const narrowGuide = root.classList.contains('ytmd-guide-wide') && (parseInt(root.style.getPropertyValue('--ytmd-guide-w'), 10) || 240) < 300;
+    const mode = room < creditW.stack ? 'hide' : (narrowGuide || room < creditW.inline) ? 'stack' : 'inline';
     credit.classList.toggle('ytmd-stack', mode === 'stack');
     credit.classList.toggle('ytmd-hide', mode === 'hide');
   }
