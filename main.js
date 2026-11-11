@@ -277,10 +277,13 @@ function updateDiscord() {
   if (!np) return discord.setActivity(null);
   const a = {
     type: 2,
-    details: clip(np.title, 128),
-    state: clip(np.paused ? `Duraklatıldı · ${np.artist}` : np.artist || 'YouTube Music', 128),
+    // Üye listesinde "YouTube Music dinliyor" yerine "<Sanatçı> dinliyor" yazsın
+    status_display_type: 1,
+    details: clip((np.paused ? '⏸ ' : '') + np.title, 128),
+    state: clip(np.artist || 'YouTube Music', 128),
     assets: {}
   };
+  if (np.videoId) a.details_url = `https://music.youtube.com/watch?v=${np.videoId}`;   // şarkı adına tıklayınca açılsın
   const art = (np.artwork || '').replace(/=w\d+-h\d+/, '=w512-h512');
   if (/^https:\/\//.test(art) && art.length < 256) a.assets.large_image = art;
   a.assets.large_text = clip(np.album || np.title, 128);
