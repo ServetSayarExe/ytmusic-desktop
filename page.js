@@ -886,8 +886,8 @@
     if (key === volLast) return;
     volLast = key;
     volEl.classList.toggle('muted', muted || v === 0);
-    volEl.replaceChildren(document.createTextNode(muted ? 'Sessiz' : '%' + v),
-      !muted && boost > 100 ? el('small', { text: ' ×' + (boost / 100).toString().replace('.', ',') }) : null);
+    volEl.replaceChildren(document.createTextNode(muted ? 'Sessiz' : '%' + v));
+    if (!muted && boost > 100) volEl.appendChild(el('small', { text: ' ×' + (boost / 100).toString().replace('.', ',') }));
     volEl.title = muted ? 'Ses kapalı' : 'Ses seviyesi: %' + v + (boost > 100 ? ' (yükseltme %' + boost + ')' : '');
   }
   setInterval(() => { if (!document.hidden) tickVolume(); }, 250);
