@@ -1,7 +1,7 @@
 {
   "name": "ytmusic-desktop",
   "productName": "YouTube Music Desktop",
-  "version": "1.8.4",
+  "version": "1.8.5",
   "description": "YouTube Music için basit masaüstü uygulaması",
   "main": "main.js",
   "scripts": {
@@ -43,7 +43,8 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "runAfterFinish": true,
-      "deleteAppDataOnUninstall": false
+      "deleteAppDataOnUninstall": false,
+      "include": "installer.nsh"
     },
     "mac": {
       "icon": "icon.png"
