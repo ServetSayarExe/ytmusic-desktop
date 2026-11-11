@@ -920,19 +920,23 @@
 
   // ---------------- Az bellek modu (pencere gizliyken) ----------------
   // Görünmeyen videoyu en düşük kaliteye alır (ses kalitesi değişmez) ve kullanılmayan belleği boşaltır.
-  let lowPower = false, gcTimer = 0;
+  // Kalite değişimi şarkının ortasında yapılırsa YouTube arabelleği boşaltır ve ses bir an donar.
+  // Bu yüzden: gizlenince çalan şarkıya dokunma, düşük kaliteyi bir sonraki şarkının başında uygula.
+  let lowPower = false, lowApplied = false, gcTimer = 0;
   const freeMem = () => { try { typeof window.gc === 'function' && window.gc(); } catch (e) {} };
+  const setQuality = (low) => { const p = player(); try { p && p.setPlaybackQualityRange && (low ? p.setPlaybackQualityRange('tiny', 'tiny') : p.setPlaybackQualityRange('auto', 'auto')); } catch (e) {} };
   window.__ytmdLowPower = (on) => {
     if (!on && GAME) return;   // oyun modunda pencere açılsa da düşük güçte kal
     if (on === lowPower) return;
     lowPower = on;
-    const p = player();
-    try { p && p.setPlaybackQualityRange && (on ? p.setPlaybackQualityRange('tiny', 'tiny') : p.setPlaybackQualityRange('auto', 'auto')); } catch (e) {}
+    if (!on && lowApplied) { lowApplied = false; setQuality(false); }
     clearInterval(gcTimer);
     if (on) { setTimeout(freeMem, 15000); gcTimer = setInterval(freeMem, 180000); }
   };
-  // Yeni şarkıda YouTube kaliteyi sıfırlayabilir: gizliyken tekrar düşür
-  trackListeners.push(() => { if (lowPower) { lowPower = false; window.__ytmdLowPower(true); } });
+  // Yeni şarkı yüklenmeye başladığı an (arabellek zaten boş) gizliysek düşük kaliteyle başlat
+  document.addEventListener('loadstart', (e) => {
+    if (lowPower && e.target instanceof HTMLVideoElement) { lowApplied = true; setTimeout(() => setQuality(true), 0); }
+  }, true);
 
   // ---------------- Sol menü genişliği (sürükleyerek) ----------------
   if (THEME) {
