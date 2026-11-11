@@ -964,14 +964,30 @@
     watch(); bootFns.push(watch); setInterval(watch, 5000);
     window.addEventListener('resize', () => { clearTimeout(watch.t); watch.t = setTimeout(applyGuide, 250); });
     let drag = null;
-    handle.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, w: gw }; handle.setPointerCapture(e.pointerId); root.classList.add('ytmd-guide-drag'); e.preventDefault(); });
+    // Sürüklerken: sadece kitaplık genişler (karede bir kez), sağdaki içerik bırakınca tek seferde yerleşir
+    let dragRaf = 0;
+    handle.addEventListener('pointerdown', (e) => {
+      drag = { x: e.clientX, w: gw }; handle.setPointerCapture(e.pointerId);
+      root.style.setProperty('--ytmd-content-w', gw + 'px');
+      root.classList.add('ytmd-guide-drag'); e.preventDefault();
+    });
     handle.addEventListener('pointermove', (e) => {
       if (!drag) return;
-      gw = Math.max(gmin, Math.min(GMAX, Math.round(drag.w + e.clientX - drag.x)));
-      root.style.setProperty('--ytmd-guide-w', gw + 'px');
-      window.__ytmdCredit && window.__ytmdCredit();
+      drag.cx = e.clientX;
+      if (dragRaf) return;
+      dragRaf = requestAnimationFrame(() => {
+        dragRaf = 0; if (!drag) return;
+        const n = Math.max(gmin, Math.min(GMAX, Math.round(drag.w + drag.cx - drag.x)));
+        if (n !== gw) { gw = n; root.style.setProperty('--ytmd-guide-w', gw + 'px'); }
+      });
     });
-    const end = () => { if (!drag) return; drag = null; root.classList.remove('ytmd-guide-drag'); try { localStorage.setItem('ytmd-guide-w', String(gw)); } catch (e) {} mountCreditSoon(); };
+    const end = () => {
+      if (!drag) return; drag = null; cancelAnimationFrame(dragRaf); dragRaf = 0;
+      root.style.removeProperty('--ytmd-content-w');
+      root.classList.remove('ytmd-guide-drag');
+      try { localStorage.setItem('ytmd-guide-w', String(gw)); } catch (e) {}
+      mountCreditSoon();
+    };
     handle.addEventListener('pointerup', end); handle.addEventListener('pointercancel', end); handle.addEventListener('lostpointercapture', end);
     handle.addEventListener('dblclick', () => { gw = gmin; root.style.setProperty('--ytmd-guide-w', gw + 'px'); try { localStorage.setItem('ytmd-guide-w', String(gw)); } catch (e) {} mountCreditSoon(); });
     window.__ytmdGuideMin = (m) => {
