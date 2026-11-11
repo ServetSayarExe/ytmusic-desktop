@@ -390,7 +390,7 @@
       eq.boost = eq.ctx.createGain();
       eq.limit = eq.ctx.createDynamicsCompressor();
       eq.limit.knee.value = 0; eq.limit.ratio.value = 20; eq.limit.attack.value = 0.002; eq.limit.release.value = 0.12; eq.limit.threshold.value = 0;
-      eq.fade.connect(eq.boost); eq.boost.connect(eq.limit); eq.limit.connect(eq.ctx.destination);
+      eq.boost.connect(eq.limit); eq.limit.connect(eq.ctx.destination);
       applySink();
       const resume = () => { if (eq.ctx.state === 'suspended') eq.ctx.resume().catch(() => {}); };
       document.addEventListener('play', resume, true);
@@ -413,8 +413,9 @@
     try { eq.makeup.disconnect(); } catch (e) {}
     if (s.normalize) { last.connect(eq.comp); eq.makeup.gain.value = 1.35; eq.makeup.connect(eq.fade); }
     else last.connect(eq.fade);
-    eq.boost.gain.setTargetAtTime(audio.boost, eq.ctx.currentTime, 0.08);
-    eq.limit.threshold.value = audio.boost > 1 ? -1 : 0;
+    try { eq.fade.disconnect(); } catch (e) {}
+    if (audio.boost > 1) { eq.boost.gain.setTargetAtTime(audio.boost, eq.ctx.currentTime, 0.08); eq.limit.threshold.value = -1; eq.fade.connect(eq.boost); }
+    else eq.fade.connect(eq.ctx.destination);   // yükseltme kapalı: sınırlayıcı devre dışı
   }
   // Ses çıkış cihazı (boş = sistem varsayılanı)
   function applySink() {
@@ -438,8 +439,12 @@
     if (audio.device && v.sinkId !== audio.device && !eq.ctx) applySink();
   }, 1000);
   // Yumuşak geçiş: şarkı sonunda sesi kıs, yeni şarkıda yavaşça aç
-  let cfArmed = false;
-  setInterval(() => {
+  let cfArmed = false, cfTimer = 0;
+  function cfSchedule() {
+    clearInterval(cfTimer); cfTimer = 0;
+    if (audio.crossfade > 0) cfTimer = setInterval(cfTick, 200);
+  }
+  function cfTick() {
     const cf = audio.crossfade;
     if (!cf || !eq.fade || !eq.ctx) return;
     const v = video(); if (!v || !isFinite(v.duration) || v.duration <= 0) return;
@@ -458,7 +463,7 @@
     if (!v.paused && v.duration > cf * 2 + 8 && rem <= cf && rem > 0) {
       cfArmed = true; g.cancelScheduledValues(now); g.setTargetAtTime(Math.max(0, rem / cf), now, 0.08);
     }
-  }, 120);
+  }
   // YouTube video öğesini değiştirirse yeniden bağlan
   setInterval(() => { if (eq.ctx && video() && video() !== eq.video) eqApply(); }, 3000);
 
@@ -588,21 +593,22 @@
       const guide = document.querySelector('ytmusic-guide-renderer');
       if (!guide) return false;
       const host = guide.querySelector('#sections') || guide;
-      if (!panel) build();
-      if (panel.parentElement !== host) host.appendChild(panel);
+      let fresh = false;
+      if (!panel) { build(); fresh = true; }
+      if (panel.parentElement !== host) { host.appendChild(panel); fresh = true; }
       guide.querySelectorAll('ytmusic-guide-entry-renderer').forEach((e) => {
         const d = e.data || (e.__data && e.__data.data);
         if (d && !d.isPrimary) e.classList.add('ytmd-lib-hidden');
       });
       root.classList.add('ytmd-lib-on');
-      return true;
+      return fresh ? 'fresh' : true;
     }
     return { _set: (k, v) => { data[k] = v; }, mount, load, render, refresh: () => Object.keys(SOURCES).forEach((k, i) => setTimeout(() => load(k), i * 700)), parse };
   })();
   if (THEME) {
-    const tryMount = () => { if (LIB.mount()) { LIB.render(); } };
+    const tryMount = () => { if (!document.hidden && LIB.mount() === 'fresh') LIB.render(); };
     tryMount();
-    setInterval(tryMount, 2000);           // YouTube menüyü yeniden çizerse tekrar yerleştir
+    setInterval(tryMount, 3000);           // YouTube menüyü yeniden çizerse tekrar yerleştir
     setTimeout(() => LIB.refresh(), 2500); // açılışta tazele
     setInterval(() => LIB.refresh(), 10 * 60 * 1000);
     window.addEventListener('yt-navigate-finish', () => LIB.render());
@@ -815,8 +821,11 @@
     let box = null, built = '', on = true;
     const greet = () => { const h = new Date().getHours(); return h < 5 ? 'İyi geceler' : h < 12 ? 'Günaydın' : h < 18 ? 'İyi günler' : 'İyi akşamlar'; };
     const nav = (ep) => document.querySelector('ytmusic-app').dispatchEvent(new CustomEvent('yt-navigate', { bubbles: true, composed: true, detail: { endpoint: ep } }));
+    let libRaw = null, libParsed = {}, recentAt = 0, recentList = [], builtAt = 0;
     function libItems() {
-      let d = {}; try { d = JSON.parse(localStorage.getItem('ytmd-lib') || '{}'); } catch (e) {}
+      let raw = null; try { raw = localStorage.getItem('ytmd-lib'); } catch (e) {}
+      if (raw !== libRaw) { libRaw = raw; try { libParsed = JSON.parse(raw || '{}') || {}; } catch (e) { libParsed = {}; } }
+      const d = libParsed;
       const pl = ((d.playlists && d.playlists.items) || []), al = ((d.albums && d.albums.items) || []);
       const liked = pl.find((x) => x.id === 'VLLM');
       const rest = []; const a = pl.filter((x) => x.id !== 'VLLM'), b = al.slice();
@@ -824,7 +833,8 @@
       return [liked || { id: 'VLLM', title: 'Beğendiğim müzikler', thumb: '', ep: { browseEndpoint: { browseId: 'VLLM' } } }, ...rest].slice(0, 8);
     }
     async function build() {
-      const recent = api.recent ? (await api.recent().catch(() => [])) || [] : [];
+      if (!recentAt || Date.now() - recentAt > 60000) { recentAt = Date.now(); recentList = api.recent ? (await api.recent().catch(() => [])) || [] : []; }
+      const recent = recentList;
       const tiles = libItems();
       const key = tiles.map((t) => t.id).join(',') + '|' + recent.map((r) => r.id).join(',') + '|' + greet();
       if (box && key === built) return box;
@@ -859,24 +869,30 @@
       const sl = document.querySelector('ytmusic-browse-response ytmusic-section-list-renderer');
       const contents = sl && sl.querySelector(':scope > #contents');
       if (!contents) return;
-      busy = true;
+      // Zaten yerindeyse ve yeniyse hiçbir şey yapma
+      if (box && box.parentElement === sl && box.nextElementSibling === contents && Date.now() - builtAt < 60000) return;
+      busy = true; builtAt = Date.now();
       try { const b = await build(); if (b.nextElementSibling !== contents || b.parentElement !== sl) sl.insertBefore(b, contents); } catch (e) {}
       busy = false;
     }
-    return { tick, set: (v) => { on = v; if (!on && box) box.remove(); built = on ? built : ''; tick(); }, refresh: () => { built = ''; tick(); } };
+    return { tick, set: (v) => { on = v; if (!on && box) box.remove(); built = on ? built : ''; builtAt = 0; tick(); }, refresh: () => { built = ''; builtAt = 0; recentAt = 0; tick(); } };
   })();
   if (THEME) {
-    setInterval(() => HOME.tick(), 1500);
+    setInterval(() => HOME.tick(), 2000);
     window.addEventListener('yt-navigate-finish', () => setTimeout(() => HOME.tick(), 200));
     trackListeners.push(() => setTimeout(() => HOME.refresh(), 40000));
   }
 
   // ---------------- Ses yüzdesi (sağ alttaki ses kaydırıcısının yanında) ----------------
   const volEl = el('span', { id: 'ytmd-vol', title: 'Ses seviyesi' });
-  let volLast = '';
+  let volLast = '', volBar = null, volFindAt = 0;
   function tickVolume() {
-    // Sayfada birden çok oynatıcı çubuğu olabiliyor: görünür olanı seç
-    const bar = [...document.querySelectorAll('ytmusic-player-bar #right-controls .right-controls-buttons')].find((b) => b.offsetWidth > 0);
+    // Sayfada birden çok oynatıcı çubuğu olabiliyor: görünür olanı seç (ara sıra, pahalı olduğu için)
+    if (!volBar || !volBar.isConnected || Date.now() - volFindAt > 5000) {
+      volFindAt = Date.now();
+      volBar = [...document.querySelectorAll('ytmusic-player-bar #right-controls .right-controls-buttons')].find((b) => b.offsetWidth > 0) || null;
+    }
+    const bar = volBar;
     if (!bar) return;
     if (volEl.parentElement !== bar) bar.insertBefore(volEl, bar.firstChild);
     let v = 0, muted = false;
@@ -890,7 +906,7 @@
     if (!muted && boost > 100) volEl.appendChild(el('small', { text: ' ×' + (boost / 100).toString().replace('.', ',') }));
     volEl.title = muted ? 'Ses kapalı' : 'Ses seviyesi: %' + v + (boost > 100 ? ' (yükseltme %' + boost + ')' : '');
   }
-  setInterval(() => { if (!document.hidden) tickVolume(); }, 250);
+  setInterval(() => { if (!document.hidden) tickVolume(); }, 1000);
   document.addEventListener('volumechange', () => tickVolume(), true);
 
   // ---------------- Az bellek modu (pencere gizliyken) ----------------
@@ -940,6 +956,7 @@
     if ('boost' in s) audio.boost = Math.max(1, Math.min(2, (+s.boost || 100) / 100));
     if ('crossfade' in s) {
       audio.crossfade = Math.max(0, Math.min(12, +s.crossfade || 0));
+      cfSchedule();
       if (!audio.crossfade && eq.fade) { cfArmed = false; eq.fade.gain.cancelScheduledValues(eq.ctx.currentTime); eq.fade.gain.setValueAtTime(1, eq.ctx.currentTime); }
     }
     if (s.eq) { eq.settings = { enabled: !!s.eq.enabled, bands: s.eq.bands || [0, 0, 0, 0, 0], normalize: !!s.normalize }; eqApply(); }
