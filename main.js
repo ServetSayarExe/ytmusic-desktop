@@ -64,7 +64,7 @@ const DEFAULTS = {
   notifications: true, discord: true, discordClientId: '',
   eq: { enabled: false, preset: 'Düz', bands: [0, 0, 0, 0, 0] }, normalize: false,
   stats: true, miniBounds: null,
-  crossfade: 0, speed: 1, outputDevice: '', taskbarProgress: true, homeHero: true, dailyGoal: 30, boost: 100
+  crossfade: 0, speed: 1, outputDevice: '', taskbarProgress: true, homeHero: true, dailyGoal: 30, boost: 100, closeToTray: true
 };
 const settings = readJSON(settingsFile, DEFAULTS);
 const saveSettings = () => { try { fs.writeFileSync(settingsFile, JSON.stringify(settings)); } catch {} };
@@ -375,7 +375,7 @@ function setSetting(key, value) {
   switch (key) {
     case 'theme': settings.theme = bool(value); saveSettings(); quitting = true; app.relaunch(); app.quit(); return;
     case 'themeMode': if (!['dark', 'amoled', 'cover'].includes(value)) return; settings.themeMode = value; break;
-    case 'transitions': case 'normalize': case 'notifications': case 'stats': case 'homeHero': settings[key] = bool(value); break;
+    case 'transitions': case 'normalize': case 'notifications': case 'stats': case 'homeHero': case 'closeToTray': settings[key] = bool(value); break;
     case 'taskbarProgress': settings.taskbarProgress = bool(value); if (!settings.taskbarProgress && win) win.setProgressBar(-1); lastProg = null; break;
     case 'crossfade': { const n = Math.round(+value); if (!(n >= 0 && n <= 12)) return; settings.crossfade = n; break; }
     case 'speed': { const n = +value; if (![0.75, 0.9, 1, 1.1, 1.25, 1.5].includes(n)) return; settings.speed = n; break; }
@@ -465,7 +465,12 @@ function createWindow() {
   win.on('show', () => lowPower(false));
   win.on('restore', () => lowPower(false));
   win.on('leave-full-screen', () => pageJS('window.__ytmdFull && window.__ytmdFull(false)'));
-  win.on('close', (e) => { saveState(); if (!quitting) { e.preventDefault(); if (win.isFullScreen()) win.setFullScreen(false); win.hide(); } });
+  win.on('close', (e) => {
+    saveState();
+    if (quitting) return;
+    if (settings.closeToTray === false) { quitting = true; app.quit(); return; }   // "X'e basınca tamamen kapat"
+    e.preventDefault(); if (win.isFullScreen()) win.setFullScreen(false); win.hide();
+  });
   win.on('resized', saveState);
   win.on('moved', saveState);
 }
