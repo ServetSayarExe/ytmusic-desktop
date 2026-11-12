@@ -133,7 +133,7 @@
 
     // 4) Görünüm: YouTube'un kendi alt oynatıcı çubuğunu gizle (yerine native oynatıcı var)
     const st = document.createElement('style');
-    st.textContent = 'html,body{-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none;background:#030303}ytmusic-player-bar,ytmusic-mini-player{display:none!important}ytmusic-player-page{opacity:0!important;pointer-events:none!important}';
+    st.textContent = 'html,body{-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none;background:#030303}ytmusic-player-bar,ytmusic-mini-player,#player-bar-background,ytmusic-app-layout>#player-bar-background{display:none!important}ytmusic-app,ytmusic-app-layout{--ytmusic-player-bar-height:0px!important}ytmusic-player-page{opacity:0!important;pointer-events:none!important}';
     (document.head || document.documentElement).appendChild(st);
   }
   if (document.documentElement) start(); else document.addEventListener('DOMContentLoaded', start);
