@@ -72,7 +72,12 @@
     pause() { try { player().pauseVideo(); } catch (e) { const v = video(); v && v.pause(); } },
     seek(t) { const v = video(); if (v) v.currentTime = t; }
   };
-  window.__ytmdControl = (a, x) => ctl[a] && ctl[a](x);
+  window.__ytmdControl = (a, x) => {
+    const r = ctl[a] && ctl[a](x);
+    // Telefon kumandası/görev çubuğu: yeni şarkıyı 5 sn beklemeden hemen bildir
+    [150, 500, 1200].forEach((d) => setTimeout(() => { try { tickNowPlaying(); } catch (e) {} }, d));
+    return r;
+  };
   let GAME = false;   // oyun modu: arayüz güncellemeleri durur
   const idle = () => document.hidden || GAME;
   const bootFns = [];   // açılışta YouTube menüyü çizer çizmez yerleşecek parçalar
@@ -161,6 +166,13 @@
   }
   setInterval(() => { if (!idle()) tickNowPlaying(); }, 1000);
   setInterval(() => { if (idle()) tickNowPlaying(); }, 5000);
+  // Şarkı değişince/durunca anında bildir (pencere gizliyken de; olay başına tek okuma)
+  let npSoon = 0;
+  ['play', 'pause', 'loadedmetadata', 'durationchange', 'seeked', 'emptied'].forEach((t) =>
+    document.addEventListener(t, (e) => {
+      if (!(e.target instanceof HTMLMediaElement)) return;
+      clearTimeout(npSoon); npSoon = setTimeout(tickNowPlaying, 80);
+    }, true));
 
   // ---------------- Şarkı sözleri (panel + tam ekran ortak) ----------------
   let lyricsOpen = false;
