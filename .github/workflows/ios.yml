@@ -1,0 +1,56 @@
+# iPhone sürümünü (AltStore ile kurulacak imzasız .ipa) derler ve "ios-latest" ön sürümüne koyar.
+# Masaüstü güncellemelerini etkilemez: ön sürüm olduğu için masaüstü uygulaması bunu görmez.
+name: iPhone sürümü derle
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['ios/**', '.github/workflows/ios.yml']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ios-build
+  cancel-in-progress: true
+
+jobs:
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Araçlar
+        run: brew install xcodegen
+
+      - name: Simge ve proje
+        working-directory: ios
+        run: |
+          python3 make_icon.py YTMusic/Assets.xcassets/AppIcon.appiconset/icon-1024.png
+          xcodegen generate
+
+      - name: Derle
+        working-directory: ios
+        run: |
+          xcodebuild -project YTMusic.xcodeproj -scheme YTMusic -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/YTMusic.app Payload/
+          zip -qry YouTube-Music-iPhone.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: YouTube-Music-iPhone
+          path: ios/YouTube-Music-iPhone.ipa
+
+      - name: Ön sürüme koy
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete ios-latest --yes --cleanup-tag || true
+          gh release create ios-latest ios/YouTube-Music-iPhone.ipa \
+            --target "$GITHUB_SHA" --prerelease --latest=false \
+            --title "iPhone sürümü (AltStore)" \
+            --notes "iPhone'da Safari ile indir, AltStore → Uygulamalarım → + ile bu dosyayı seç."
