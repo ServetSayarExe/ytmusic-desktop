@@ -30,6 +30,12 @@ final class PlayerModel: ObservableObject {
     let remote = RemoteClient()
     private var volHoldUntil = Date.distantPast
     private var remoteQueue: [[String: Any]] = []
+    private let silent = SilentAudio()
+
+    /// Bilgisayar çalarken kilit ekranı ve Dynamic Island için telefonu "çalıyor" tut
+    private func syncSilent() {
+        silent.set(output == .computer && hasTrack && isPlaying)
+    }
     private var volWork: DispatchWorkItem?
 
     /// Web sayfasına komut gönderir (WebViewController bağlar)
@@ -112,6 +118,7 @@ final class PlayerModel: ObservableObject {
             artURL = art
             loadArtwork(art)
         }
+        syncSilent()
         updateNowPlaying()
     }
 
@@ -129,6 +136,7 @@ final class PlayerModel: ObservableObject {
         position = 0
         isPlaying = false
         holdUntil = .distantPast
+        syncSilent()
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
     }
 
@@ -138,7 +146,7 @@ final class PlayerModel: ObservableObject {
         guard o != output else { return }
         if o == .computer {
             guard pcPaired else { return }
-            if isPlaying { send?("pause", nil) }   // telefondaki çalmayı durdur
+            send?("release", nil)   // telefondaki çalmayı durdur, kilit ekranını bize bıraksın
             output = .computer
             clearTrack()
             remote.start()
@@ -185,6 +193,7 @@ final class PlayerModel: ObservableObject {
         isPlaying = playing
         holdUntil = Date().addingTimeInterval(output == .computer ? 2.5 : 1.2)
         if output == .computer { remote.send("toggle") } else { send?(playing ? "play" : "pause", nil) }
+        syncSilent()
         updateNowPlaying()
     }
 

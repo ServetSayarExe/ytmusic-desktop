@@ -42,6 +42,11 @@
     else if (cmd === 'pause') { if (v && !v.paused) v.pause(); }
     else if (cmd === 'seek') { if (v && isFinite(arg)) v.currentTime = arg; }
     else if (cmd === 'closeWebPlayer') { closeWebPlayer(); return; }
+    else if (cmd === 'release') {
+      if (v && !v.paused) v.pause();
+      try { navigator.mediaSession.playbackState = 'none'; navigator.mediaSession.metadata = null; } catch (e) {}
+      return;
+    }
     else if (cmd === 'next' || cmd === 'prev') {
       const action = cmd === 'next' ? 'nexttrack' : 'previoustrack';
       if (dup(action)) return;
