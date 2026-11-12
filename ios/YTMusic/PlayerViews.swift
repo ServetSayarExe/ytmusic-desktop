@@ -54,11 +54,11 @@ struct MiniPlayerView: View {
                 .frame(width: 46, height: 46)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(model.hasTrack ? model.title : "Bilgisayar")
+                Text(miniTitle)
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
                 HStack(spacing: 5) {
-                    if model.output == .computer {
+                    if model.output == .computer || !model.hasTrack {
                         Image(systemName: "desktopcomputer")
                             .font(.caption2)
                             .foregroundStyle(Color.green)
@@ -107,10 +107,17 @@ struct MiniPlayerView: View {
         })
     }
 
+    private var miniTitle: String {
+        if model.hasTrack { return model.title }
+        if model.output == .computer { return model.pcName }
+        return model.browser.computers.first?.name ?? "Bilgisayar"
+    }
+
     private var miniSubtitle: String {
         if model.output == .computer && !model.hasTrack {
             return model.pcConnected ? "Bağlı · çalan şarkı yok" : "Bağlanıyor…"
         }
+        if !model.hasTrack { return "Bağlanmak için dokun" }
         return model.artist
     }
 }

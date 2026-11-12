@@ -2,6 +2,7 @@ import UIKit
 import SwiftUI
 import MediaPlayer
 import CoreImage
+import Combine
 
 /// Çalan şarkının durumu. Web sayfasından gelir; native oynatıcı, kilit ekranı ve Dynamic Island bunu kullanır.
 final class PlayerModel: ObservableObject {
@@ -25,7 +26,22 @@ final class PlayerModel: ObservableObject {
     @Published private(set) var pcVolume: Double = 50
 
     var hasTrack: Bool { !title.isEmpty }
-    var showMini: Bool { hasTrack || output == .computer }
+    var showMini: Bool { hasTrack || output == .computer || !browser.computers.isEmpty }
+
+    // Aynı Wi-Fi'daki bilgisayarları otomatik bulma ve onayla eşleşme
+    let browser = ComputerBrowser()
+    @Published private(set) var pairingId: String?
+    @Published var pairError: String?
+    @Published private(set) var pcName = UserDefaults.standard.string(forKey: "pcName") ?? "Bilgisayar"
+    @Published private(set) var pcId = UserDefaults.standard.string(forKey: "pcId") ?? ""
+    private var cancellables = Set<AnyCancellable>()
+
+    private static var deviceId: String {
+        if let d = UserDefaults.standard.string(forKey: "deviceId") { return d }
+        let d = UUID().uuidString
+        UserDefaults.standard.set(d, forKey: "deviceId")
+        return d
+    }
 
     let remote = RemoteClient()
     private var volHoldUntil = Date.distantPast
@@ -61,6 +77,10 @@ final class PlayerModel: ObservableObject {
             self?.pcConnected = ok
             self?.syncVolumeButtons()
         }
+        browser.$computers
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+        browser.start()
         volumeButtons.onStep = { [weak self] step in
             guard let self else { return }
             self.setPCVolume(min(100, max(0, self.pcVolume + Double(step) * 6.25)))
@@ -172,12 +192,65 @@ final class PlayerModel: ObservableObject {
         }
     }
 
+    /// Listeden seçilen bilgisayara bağlan. İlk seferde bilgisayarda "İzin ver" onayı istenir.
+    func connect(to c: FoundComputer) {
+        guard pairingId == nil else { return }
+        pairError = nil
+        pairingId = c.id
+        var comps = URLComponents()
+        comps.scheme = "http"; comps.host = c.ip; comps.port = c.port; comps.path = "/pair"
+        guard let url = comps.url else { pairingId = nil; return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.timeoutInterval = 75
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try? JSONSerialization.data(withJSONObject: ["device": PlayerModel.deviceId, "name": UIDevice.current.name])
+        URLSession.shared.dataTask(with: req) { [weak self] data, resp, _ in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.pairingId = nil
+                let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+                guard code == 200, let data,
+                      let obj = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+                      let token = obj["token"] as? String, token.count == 32 else {
+                    switch code {
+                    case 403: self.pairError = "Bilgisayarda bağlantı reddedildi."
+                    case 429: self.pairError = "Bilgisayarda bekleyen bir onay var, biraz sonra tekrar dene."
+                    default: self.pairError = "Bilgisayara ulaşılamadı. Aynı Wi-Fi'da olduğunuzdan emin ol."
+                    }
+                    return
+                }
+                var api = URLComponents()
+                api.scheme = "http"; api.host = c.ip; api.port = c.port; api.path = "/api/\(token)"
+                guard let apiURL = api.url else { return }
+                self.pcName = c.name
+                self.pcId = c.id
+                UserDefaults.standard.set(c.name, forKey: "pcName")
+                UserDefaults.standard.set(c.id, forKey: "pcId")
+                let wasComputer = self.output == .computer
+                self.remote.pair(apiURL)
+                self.pcPaired = true
+                if wasComputer {
+                    self.clearTrack()
+                    self.remote.start()
+                } else {
+                    self.setOutput(.computer)
+                }
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+            }
+        }.resume()
+    }
+
     /// QR kod okutulunca; tanınırsa true döner
     func pairComputer(qr: String) -> Bool {
         guard let url = RemoteClient.apiURL(fromQR: qr) else { return false }
         let wasComputer = output == .computer
         remote.pair(url)
         pcPaired = true
+        pcId = ""
+        pcName = "Bilgisayar"
+        UserDefaults.standard.set("", forKey: "pcId")
+        UserDefaults.standard.set("Bilgisayar", forKey: "pcName")
         if wasComputer { remote.start() }
         return true
     }

@@ -17,8 +17,17 @@ struct DevicesSheet: View {
                         model.setOutput(.phone)
                         dismiss()
                     }
-                    if model.pcPaired {
-                        DeviceRow(icon: "desktopcomputer", name: "Bilgisayar", detail: computerDetail,
+                    ForEach(model.browser.computers) { c in
+                        let selected = model.output == .computer && model.pcId == c.id
+                        DeviceRow(icon: "desktopcomputer", name: c.name,
+                                  detail: model.pairingId == c.id ? "Bilgisayarda \"İzin ver\"e bas…" : (selected ? computerDetail : "Aynı Wi-Fi'da"),
+                                  selected: selected, busy: model.pairingId == c.id) {
+                            if selected { dismiss() } else { model.connect(to: c) }
+                        }
+                    }
+                    if model.pcPaired && !model.browser.computers.contains(where: { $0.id == model.pcId }) {
+                        DeviceRow(icon: "desktopcomputer", name: model.pcName,
+                                  detail: model.output == .computer ? computerDetail : "Son bağlanılan",
                                   selected: model.output == .computer) {
                             model.setOutput(.computer)
                             dismiss()
@@ -26,6 +35,14 @@ struct DevicesSheet: View {
                     }
                 } header: {
                     Text("Nerede çalsın?")
+                } footer: {
+                    if model.browser.computers.isEmpty {
+                        Text("Aynı Wi-Fi'daki bilgisayarlar burada kendiliğinden görünür. Bilgisayardaki uygulamanın güncel olduğundan emin ol.")
+                    }
+                }
+
+                if let err = model.pairError {
+                    Section { Text(err).foregroundStyle(.red) }
                 }
 
                 Section {
@@ -33,8 +50,7 @@ struct DevicesSheet: View {
                         errorText = nil
                         scanning = true
                     } label: {
-                        Label(model.pcPaired ? "Bilgisayarı yeniden eşleştir" : "Bilgisayarı eşleştir",
-                              systemImage: "qrcode.viewfinder")
+                        Label("QR kodla bağlan", systemImage: "qrcode.viewfinder")
                     }
                     if model.pcPaired {
                         Button(role: .destructive) {
@@ -43,8 +59,10 @@ struct DevicesSheet: View {
                             Label("Eşleşmeyi kaldır", systemImage: "xmark.circle")
                         }
                     }
+                } header: {
+                    Text("Diğer")
                 } footer: {
-                    Text("Bilgisayardaki uygulamada Ayarlar → Telefon kumandası'nı aç ve QR kodu okut. Telefon ile bilgisayar aynı Wi-Fi'de olmalı.")
+                    Text("Bilgisayar listede çıkmazsa: bilgisayardaki uygulamada Ayarlar → Telefondan kumanda'daki QR kodu okut.")
                 }
 
                 if let errorText {
@@ -71,6 +89,10 @@ struct DevicesSheet: View {
             }
         }
         .preferredColorScheme(.dark)
+        .onAppear { model.pairError = nil }
+        .onChange(of: model.pcConnected) { connected in
+            if connected { dismiss() }
+        }
     }
 
     private var computerDetail: String {
@@ -84,6 +106,7 @@ private struct DeviceRow: View {
     let name: String
     let detail: String?
     let selected: Bool
+    var busy: Bool = false
     let action: () -> Void
 
     var body: some View {
@@ -100,7 +123,9 @@ private struct DeviceRow: View {
                     }
                 }
                 Spacer()
-                if selected {
+                if busy {
+                    ProgressView()
+                } else if selected {
                     Image(systemName: "checkmark").foregroundStyle(Color.green)
                 }
             }
