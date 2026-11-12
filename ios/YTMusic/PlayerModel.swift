@@ -31,6 +31,12 @@ final class PlayerModel: ObservableObject {
     private var volHoldUntil = Date.distantPast
     private var remoteQueue: [[String: Any]] = []
     private let silent = SilentAudio()
+    let volumeButtons = VolumeButtons()
+
+    /// Bilgisayara bağlıyken yan ses tuşları bilgisayarın sesini değiştirir
+    private func syncVolumeButtons() {
+        volumeButtons.setActive(output == .computer && pcConnected)
+    }
 
     /// Bilgisayar çalarken kilit ekranı ve Dynamic Island için telefonu "çalıyor" tut
     private func syncSilent() {
@@ -51,7 +57,14 @@ final class PlayerModel: ObservableObject {
 
     init() {
         pcPaired = remote.api != nil
-        remote.onConnection = { [weak self] ok in self?.pcConnected = ok }
+        remote.onConnection = { [weak self] ok in
+            self?.pcConnected = ok
+            self?.syncVolumeButtons()
+        }
+        volumeButtons.onStep = { [weak self] step in
+            guard let self else { return }
+            self.setPCVolume(min(100, max(0, self.pcVolume + Double(step) * 6.25)))
+        }
         remote.onState = { [weak self] st in self?.applyRemote(st) }
         setupRemoteCommands()
     }
@@ -150,10 +163,12 @@ final class PlayerModel: ObservableObject {
             output = .computer
             clearTrack()
             remote.start()
+            syncVolumeButtons()
         } else {
             remote.stop()
             output = .phone
             clearTrack()
+            syncVolumeButtons()
         }
     }
 

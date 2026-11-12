@@ -58,6 +58,8 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
             webView.trailingAnchor.constraint(equalTo: view.trailingAnchor)
         ])
 
+        model.volumeButtons.attach(to: view)
+
         let refresh = UIRefreshControl()
         refresh.tintColor = .white
         refresh.addTarget(self, action: #selector(reloadPage(_:)), for: .valueChanged)
