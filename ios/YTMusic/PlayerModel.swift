@@ -29,10 +29,13 @@ final class PlayerModel: ObservableObject {
 
     let remote = RemoteClient()
     private var volHoldUntil = Date.distantPast
+    private var remoteQueue: [[String: Any]] = []
     private var volWork: DispatchWorkItem?
 
     /// Web sayfasına komut gönderir (WebViewController bağlar)
     var send: ((String, Double?) -> Void)?
+    /// Tam ekran oynatıcı kapanınca (YouTube'un kendi oynatıcısını da kapatmak için)
+    var onClose: (() -> Void)?
 
     private var artURL = ""
     private var artTask: URLSessionDataTask?
@@ -72,6 +75,7 @@ final class PlayerModel: ObservableObject {
     private func applyRemote(_ s: [String: Any]) {
         guard output == .computer else { return }
         if let v = s["vol"] as? Double, Date() >= volHoldUntil { pcVolume = v }
+        if let q = s["queue"] as? [[String: Any]] { remoteQueue = q }
         guard let np = s["np"] as? [String: Any], let t = np["title"] as? String, !t.isEmpty else { return }
         let paused = (np["paused"] as? Bool) ?? true
         let rate = (np["rate"] as? Double) ?? 1
@@ -186,7 +190,30 @@ final class PlayerModel: ObservableObject {
 
     func next() {
         holdUntil = .distantPast
-        if output == .computer { remote.send("next") } else { send?("next", nil) }
+        if output == .computer {
+            remote.send("next")
+            showNextFromQueue()
+        } else {
+            send?("next", nil)
+        }
+    }
+
+    /// Bilgisayardan onay beklemeden sıradaki şarkıyı hemen göster (gerçek durum birazdan gelir)
+    private func showNextFromQueue() {
+        guard let n = remoteQueue.first, let t = n["title"] as? String, !t.isEmpty else { return }
+        remoteQueue.removeFirst()
+        let art = (n["art"] as? String ?? "")
+            .replacingOccurrences(of: #"=w\d+-h\d+"#, with: "=w1200-h1200", options: .regularExpression)
+        var dur: Double = 0
+        if let len = n["len"] as? String {
+            dur = len.split(separator: ":").reduce(0) { $0 * 60 + (Double($1) ?? 0) }
+        }
+        apply(title: t, artist: n["artist"] as? String ?? "", album: "", art: art, dur: dur, pos: 0, playing: true)
+        position = 0
+        positionStamp = Date()
+        isPlaying = true
+        holdUntil = Date().addingTimeInterval(1.5)
+        updateNowPlaying()
     }
 
     func previous() {
@@ -208,7 +235,10 @@ final class PlayerModel: ObservableObject {
         showFull = true
     }
 
-    func close() { showFull = false }
+    func close() {
+        showFull = false
+        if output == .phone { onClose?() }
+    }
 
     // MARK: - Kapak ve renk
 

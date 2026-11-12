@@ -8,6 +8,14 @@ final class RemoteClient: NSObject, URLSessionDataDelegate {
     var onConnection: ((Bool) -> Void)?
 
     private var session: URLSession!
+    private let commandSession: URLSession = {
+        let cfg = URLSessionConfiguration.ephemeral
+        cfg.timeoutIntervalForRequest = 4
+        cfg.waitsForConnectivity = false
+        cfg.httpMaximumConnectionsPerHost = 2
+        cfg.networkServiceType = .responsiveData
+        return URLSession(configuration: cfg)
+    }()
     private var stream: URLSessionDataTask?
     private var buffer = Data()
     private var active = false
@@ -73,7 +81,8 @@ final class RemoteClient: NSObject, URLSessionDataDelegate {
         var body: [String: Any] = ["cmd": cmd]
         if let v, v.isFinite { body["v"] = v }
         req.httpBody = try? JSONSerialization.data(withJSONObject: body)
-        session.dataTask(with: req).resume()
+        req.networkServiceType = .responsiveData
+        commandSession.dataTask(with: req).resume()
     }
 
     private func connect() {

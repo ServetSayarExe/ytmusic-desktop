@@ -41,6 +41,7 @@
     if (cmd === 'play') { if (v && v.paused) v.play().catch(() => {}); }
     else if (cmd === 'pause') { if (v && !v.paused) v.pause(); }
     else if (cmd === 'seek') { if (v && isFinite(arg)) v.currentTime = arg; }
+    else if (cmd === 'closeWebPlayer') { closeWebPlayer(); return; }
     else if (cmd === 'next' || cmd === 'prev') {
       const action = cmd === 'next' ? 'nexttrack' : 'previoustrack';
       if (dup(action)) return;
@@ -50,6 +51,29 @@
     }
     setTimeout(() => post(true), 250);
   };
+
+  // YouTube'un kendi tam ekran oynatıcısı: açılınca yerine native oynatıcıyı aç, kapanınca bunu da kapat
+  const layout = () => document.querySelector('ytmusic-app-layout');
+  function closeWebPlayer() {
+    const l = layout();
+    if (!l || !l.hasAttribute('player-page-open')) return;
+    const btn = document.querySelector('ytmusic-player-page .player-minimize-button, ytmusic-player-page [aria-label="Küçült"], ytmusic-player-page [aria-label="Minimize"], .toggle-player-page-button');
+    if (btn) { btn.click(); return; }
+    try { l.playerPageOpen_ = false; } catch (e) {}
+    try { l.removeAttribute('player-page-open'); } catch (e) {}
+  }
+  let layoutObs = null;
+  function watchLayout() {
+    const l = layout();
+    if (!l || l.__ytmdWatched) return;
+    l.__ytmdWatched = true;
+    layoutObs = new MutationObserver(() => {
+      if (!l.hasAttribute('player-page-open')) return;
+      const h = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.ytmd;
+      if (h) h.postMessage({ type: 'playerOpen' });
+    });
+    layoutObs.observe(l, { attributes: true, attributeFilter: ['player-page-open'] });
+  }
 
   let lastKey = '', lastPost = 0;
   function artURL(md) {
@@ -105,10 +129,11 @@
     new MutationObserver(schedule).observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['class'] });
     setInterval(adCheck, 1500);
     setInterval(() => post(false), 500);
+    setInterval(watchLayout, 1000);
 
     // 4) Görünüm: YouTube'un kendi alt oynatıcı çubuğunu gizle (yerine native oynatıcı var)
     const st = document.createElement('style');
-    st.textContent = 'html,body{-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none;background:#030303}ytmusic-player-bar{display:none!important}';
+    st.textContent = 'html,body{-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none;background:#030303}ytmusic-player-bar,ytmusic-mini-player{display:none!important}ytmusic-player-page{opacity:0!important;pointer-events:none!important}';
     (document.head || document.documentElement).appendChild(st);
   }
   if (document.documentElement) start(); else document.addEventListener('DOMContentLoaded', start);

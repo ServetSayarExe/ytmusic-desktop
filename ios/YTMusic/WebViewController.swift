@@ -64,6 +64,7 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         webView.scrollView.refreshControl = refresh
 
         model.send = { [weak self] cmd, arg in self?.runCommand(cmd, arg) }
+        model.onClose = { [weak self] in self?.runCommand("closeWebPlayer", nil) }
         webView.load(URLRequest(url: home))
     }
 
@@ -74,12 +75,25 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard message.name == "ytmd", let d = message.body as? [String: Any] else { return }
+        if let type = d["type"] as? String {
+            // YouTube kendi tam ekran oynatıcısını açtıysa yerine bizimkini aç
+            if type == "playerOpen" { model.open() }
+            return
+        }
         model.update(d)
     }
 
     @objc private func reloadPage(_ sender: UIRefreshControl) {
         if webView.url == nil { webView.load(URLRequest(url: home)) } else { webView.reload() }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) { sender.endRefreshing() }
+    }
+
+    /// Resmi YouTube / YouTube Music uygulamasını açan bağlantılar (yok sayılır)
+    private func isAppHandoff(_ url: URL) -> Bool {
+        let scheme = url.scheme?.lowercased() ?? ""
+        if ["youtubemusic", "youtube", "vnd.youtube", "intent", "googleapp", "itms-apps", "itms-appss"].contains(scheme) { return true }
+        let host = url.host?.lowercased() ?? ""
+        return host.hasSuffix("app.goo.gl") || host == "apps.apple.com"
     }
 
     private func isInApp(_ url: URL) -> Bool {
@@ -95,6 +109,7 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
                  decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         guard let url = navigationAction.request.url else { decisionHandler(.allow); return }
+        if isAppHandoff(url) { decisionHandler(.cancel); return }
         let isMainFrame = navigationAction.targetFrame?.isMainFrame ?? true
         if !isMainFrame || isInApp(url) {
             // Bağlantının resmi YouTube Music uygulamasına atlamasını engeller
@@ -114,7 +129,7 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
 
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
                  for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
-        if navigationAction.targetFrame == nil, let url = navigationAction.request.url {
+        if navigationAction.targetFrame == nil, let url = navigationAction.request.url, !isAppHandoff(url) {
             if isInApp(url) { webView.load(URLRequest(url: url)) } else { UIApplication.shared.open(url) }
         }
         return nil
