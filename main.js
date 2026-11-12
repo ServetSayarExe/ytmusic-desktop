@@ -67,7 +67,7 @@ const DEFAULTS = {
   eq: { enabled: false, preset: 'Düz', bands: [0, 0, 0, 0, 0] }, normalize: false,
   stats: true, miniBounds: null,
   crossfade: 0, speed: 1, outputDevice: '', taskbarProgress: true, homeHero: true, dailyGoal: 30, boost: 100, closeToTray: true,
-  gameAuto: false, remote: false, partyName: '', partyRelay: 'https://ntfy.sh', adSkip: true
+  gameAuto: false, remote: false, connect: true, pairedDevices: [], partyName: '', partyRelay: 'https://ntfy.sh', adSkip: true
 };
 const settings = readJSON(settingsFile, DEFAULTS);
 const saveSettings = () => { try { fs.writeFileSync(settingsFile, JSON.stringify(settings)); } catch {} };
@@ -242,6 +242,20 @@ function updateProgress() {
   try { frac < 0 ? win.setProgressBar(-1) : win.setProgressBar(frac, { mode }); } catch (e) {}
 }
 setInterval(updateProgress, 1000);
+
+// ---------------- iPhone uygulaması eşleştirme onayı ----------------
+async function askPair(name) {
+  const w = win && !win.isDestroyed() ? win : null;
+  if (w && !w.isVisible()) w.show();
+  const opts = {
+    type: 'question', buttons: ['İzin ver', 'Reddet'], defaultId: 0, cancelId: 1, noLink: true,
+    title: 'Telefon bağlantısı',
+    message: `"${name}" bu bilgisayarda çalan müziği kontrol etmek istiyor.`,
+    detail: 'İzin verirsen bu telefon bundan sonra sormadan bağlanır. Ayarlar → Telefondan kumanda bölümünden bağlantıları sıfırlayabilirsin.'
+  };
+  const r = await (w ? dialog.showMessageBox(w, opts) : dialog.showMessageBox(opts));
+  return r.response === 0;
+}
 
 // ---------------- Şimdi çalan ----------------
 let np = null, npAt = 0, lastTrackKey = '';
@@ -773,7 +787,7 @@ if (!app.requestSingleInstanceLock()) {
       cb({ requestHeaders: h });
     });
 
-    F = createFeatures({ app, fetch: (u, o) => net.fetch(u, o), settings, saveSettings, pageJS, pageEval, control, onChange: featureChanged, userData, getWin: () => win, getNp: () => ({ np, npAt, accent: accentHex }) });
+    F = createFeatures({ app, fetch: (u, o) => net.fetch(u, o), settings, saveSettings, pageJS, pageEval, control, onChange: featureChanged, userData, getWin: () => win, getNp: () => ({ np, npAt, accent: accentHex }), askPair });
     createWindow();
     createTray();
     // Acil olmayanlar: pencere yüklenirken araya girmesinler

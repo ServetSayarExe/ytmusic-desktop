@@ -1,7 +1,7 @@
 {
   "name": "ytmusic-desktop",
   "productName": "YouTube Music Desktop",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "description": "YouTube Music için masaüstü uygulaması",
   "main": "main.js",
   "scripts": {
@@ -24,7 +24,7 @@
       "page.js",
       "discord.js",
       "features.js",
-      "qr.js",
+      "qr.js", "mdns.js",
       "remote.html",
       "theme.css",
       "core.css",

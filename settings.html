@@ -157,14 +157,16 @@
     <section id="kumanda">
       <h2>Telefondan kumanda</h2>
       <div class="box">
+        <div class="item"><div class="txt"><b>iPhone uygulaması bu bilgisayarı bulsun</b><span id="connectInfo">Aynı Wi-Fi'da iPhone uygulamasının Cihazlar listesinde otomatik görünür. İlk bağlanışta burada onay sorulur.</span></div>
+          <label class="sw"><input type="checkbox" id="connectOn"><i></i></label></div>
         <div class="item"><div class="txt"><b>Telefondan kumandayı aç</b><span>Aynı Wi-Fi'daki telefonundan duraklat, şarkı geç, ses aç-kıs, sıradan seç. Uygulama yüklemen gerekmez; kamerayla QR'ı okut.</span></div>
           <label class="sw"><input type="checkbox" id="remoteOn"><i></i></label></div>
         <div id="remoteBox" style="display:none">
           <div class="qrwrap"><canvas id="qr" width="180" height="180"></canvas>
             <div><b id="remoteState">Hazırlanıyor…</b><p class="muted" style="margin:6px 0 10px">Telefonun kamerasını QR'a tut ve açılan bağlantıya dokun. İlk açılışta Windows "erişime izin ver" sorarsa <b>Özel ağlar</b>'ı onayla.</p><code id="remoteUrl"></code></div></div>
-          <div class="item"><div class="txt"><b>Bağlantıyı yenile</b><span>Eski bağlantı adresi geçersiz olur; daha önce bağlanan telefonlar tekrar QR okutmalı</span></div>
-            <button class="btn" id="remoteReset">Yeni bağlantı</button></div>
-        </div>
+          </div>
+        <div class="item"><div class="txt"><b>Bağlantıları sıfırla</b><span>Eşleşmiş telefonlar unutulur, kumanda adresi yenilenir; telefonlar tekrar onay ister</span></div>
+          <button class="btn" id="remoteReset">Sıfırla</button></div>
       </div>
     </section>
 
@@ -353,6 +355,8 @@
     $('remoteOn').checked = r.on; $('remoteBox').style.display = r.on ? '' : 'none';
     $('remoteState').textContent = !r.on ? '' : r.running ? (r.clients ? r.clients + ' cihaz bağlı' : 'Hazır — telefonla okut') : 'Başlatılamadı (port kullanımda olabilir)';
     $('remoteUrl').textContent = r.url || '';
+    $('connectOn').checked = r.connect;
+    $('connectInfo').textContent = r.connect ? (r.paired ? r.paired + ' telefon eşleşmiş. Aynı Wi-Fi\'da iPhone uygulamasının Cihazlar listesinde görünür.' : 'Aynı Wi-Fi\'da iPhone uygulamasının Cihazlar listesinde otomatik görünür. İlk bağlanışta burada onay sorulur.') : 'Kapalı: iPhone uygulaması bu bilgisayarı bulamaz.';
     if (r.url !== lastUrl) { lastUrl = r.url; drawQR(r.qr); }
     $('partyState').textContent = FI.party ? 'Odadasın: ' + FI.party.code + (FI.party.host ? ' (oda sahibi)' : '') : 'Bir odada değilsin';
   }
@@ -362,7 +366,8 @@
   $('gameSave').onclick = () => { window.ytmd.setSetting('gameList', $('gameList').value); delete $('gameList').dataset.dirty; setTimeout(refreshFeatures, 200); };
   $('gameReset').onclick = () => { window.ytmd.setSetting('gameList', FI ? FI.gameDefault : []); delete $('gameList').dataset.dirty; setTimeout(refreshFeatures, 200); };
   $('remoteOn').onchange = () => { window.ytmd.setSetting('remote', $('remoteOn').checked); setTimeout(refreshFeatures, 400); };
-  $('remoteReset').onclick = () => { if (confirm('Yeni bağlantı oluşturulsun mu? Bağlı telefonların bağlantısı kesilir.')) { window.ytmd.setSetting('remoteReset', true); setTimeout(refreshFeatures, 500); } };
+  $('connectOn').onchange = () => { window.ytmd.setSetting('connect', $('connectOn').checked); setTimeout(refreshFeatures, 400); };
+  $('remoteReset').onclick = () => { if (confirm('Bağlantılar sıfırlansın mı? Eşleşmiş telefonlar unutulur ve tekrar onay ister.')) { window.ytmd.setSetting('remoteReset', true); setTimeout(refreshFeatures, 500); } };
   $('partyName').onchange = () => window.ytmd.setSetting('partyName', $('partyName').value);
   setInterval(refreshFeatures, 2000);
 </script>

@@ -8,6 +8,7 @@ const http = require('http');
 const crypto = require('crypto');
 const { execFile } = require('child_process');
 const { qr } = require('./qr');
+const createMdns = require('./mdns');
 
 const GAME_DEFAULT = [
   'VALORANT-Win64-Shipping.exe', 'cs2.exe', 'League of Legends.exe', 'FortniteClient-Win64-Shipping.exe',
@@ -18,6 +19,7 @@ const GAME_DEFAULT = [
 
 module.exports = function features(ctx) {
   const { app, fetch, settings, saveSettings, pageJS, pageEval, control, onChange, userData } = ctx;
+  const askPair = ctx.askPair || (async () => false);
   const win = () => ctx.getWin();
   const isWin = process.platform === 'win32';
   if (!Array.isArray(settings.gameList)) settings.gameList = GAME_DEFAULT.slice();
@@ -67,6 +69,38 @@ module.exports = function features(ctx) {
   // ================= TELEFONDAN KUMANDA =================
   const remote = { server: null, port: 0, clients: new Set(), timer: null, last: '', qrUrl: '', qr: null };
   if (!/^[0-9a-f]{32}$/.test(settings.remoteToken || '')) { settings.remoteToken = crypto.randomBytes(16).toString('hex'); saveSettings(); }
+  if (!/^[0-9a-f]{16}$/.test(settings.deviceId || '')) { settings.deviceId = crypto.randomBytes(8).toString('hex'); saveSettings(); }
+  if (!Array.isArray(settings.pairedDevices)) settings.pairedDevices = [];
+  // iPhone uygulaması bu bilgisayarı aynı Wi-Fi'da kendiliğinden bulsun (Bonjour)
+  const mdns = createMdns({ name: os.hostname(), id: settings.deviceId, port: () => remote.port, getIP: () => lanIP() });
+  let pairPending = null;
+  const pairDenied = {};
+  function readBody(req, max) {
+    return new Promise((resolve) => {
+      let body = '';
+      req.on('data', (c) => { body += c; if (body.length > max) req.destroy(); });
+      req.on('end', () => { try { resolve(JSON.parse(body)); } catch (e) { resolve(null); } });
+      req.on('error', () => resolve(null));
+    });
+  }
+  async function handlePair(req, res) {
+    const c = await readBody(req, 1000);
+    const device = c && /^[A-Za-z0-9-]{8,64}$/.test(String(c.device || '')) ? String(c.device) : '';
+    const name = c ? String(c.name || 'iPhone').replace(/[\u0000-\u001f"]/g, '').trim().slice(0, 40) || 'iPhone' : '';
+    const reply = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(obj ? JSON.stringify(obj) : ''); };
+    if (!device) return reply(400);
+    const ok = () => reply(200, { token: settings.remoteToken, name: os.hostname(), id: settings.deviceId });
+    if (settings.pairedDevices.some((d) => d.id === device)) return ok();
+    if (pairPending || (pairDenied[device] && Date.now() - pairDenied[device] < 30000)) return reply(429);
+    pairPending = device;
+    let allowed = false;
+    try { allowed = await askPair(name); } catch (e) {}
+    pairPending = null;
+    if (!allowed) { pairDenied[device] = Date.now(); return reply(403); }
+    settings.pairedDevices = settings.pairedDevices.filter((d) => d.id !== device).concat({ id: device, name }).slice(-10);
+    saveSettings();
+    ok();
+  }
   const lanIP = () => {
     const all = [];
     for (const [name, list] of Object.entries(os.networkInterfaces())) for (const a of list || []) {
@@ -105,6 +139,7 @@ module.exports = function features(ctx) {
   const REMOTE_CMDS = ['toggle', 'next', 'prev', 'seek', 'vol', 'mute', 'like', 'dislike', 'play', 'shuffle', 'repeat'];
   function onRequest(req, res) {
     const u = new URL(req.url, 'http://x');
+    if (u.pathname === '/pair' && req.method === 'POST') { handlePair(req, res); return; }
     const m = u.pathname.match(/^\/(r|api)\/([0-9a-f]{32})(?:\/(\w+))?$/);
     if (!m || !tokenOk(m[2])) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('Bulunamadı'); return; }
     if (m[1] === 'r') return serveFile(res, 'remote.html', 'text/html; charset=utf-8');
@@ -143,7 +178,7 @@ module.exports = function features(ctx) {
       if (e.code === 'EADDRINUSE' && srv.__try !== 'any') { srv.__try = 'any'; srv.listen(0, '0.0.0.0'); return; }
       remote.server = null; remote.port = 0; onChange();
     });
-    srv.on('listening', () => { remote.port = srv.address().port; onChange(); });
+    srv.on('listening', () => { remote.port = srv.address().port; onChange(); if (settings.connect !== false) mdns.start(); });
     srv.keepAliveTimeout = 5000;
     remote.server = srv;
     srv.listen(47823, '0.0.0.0');
@@ -152,15 +187,21 @@ module.exports = function features(ctx) {
     if (!remote.server) return;
     for (const r of remote.clients) { try { r.end(); } catch (e) {} }
     remote.clients.clear(); clearInterval(remote.timer); remote.timer = null;
+    mdns.stop();
     try { remote.server.close(); } catch (e) {}
     remote.server = null; remote.port = 0; onChange();
   }
-  const remoteWatch = () => (settings.remote ? remoteStart() : remoteStop());
+  const remoteWatch = () => {
+    if (settings.remote || settings.connect !== false) {
+      remoteStart();
+      if (remote.port) { if (settings.connect !== false) mdns.start(); else mdns.stop(); }
+    } else remoteStop();
+  };
   const remoteInfo = () => {
     const url = remoteUrl();
     if (url !== remote.qrUrl) { remote.qrUrl = url; remote.qr = null; if (url) { try { remote.qr = qr(url, 'M'); } catch (e) {} } }
     const code = remote.qr;
-    return { on: !!settings.remote, running: !!remote.port, url, clients: remote.clients.size, qr: code };
+    return { on: !!settings.remote, connect: settings.connect !== false, paired: settings.pairedDevices.length, running: !!remote.port, url, clients: remote.clients.size, qr: code };
   };
 
   // ================= AKILLI SIRA: şarkı enerjisi (Deezer: BPM + ses yüksekliği) =================
@@ -319,7 +360,8 @@ module.exports = function features(ctx) {
       }
       case 'gameManual': toggleGame(!!value); return true;
       case 'remote': settings.remote = !!value; saveSettings(); remoteWatch(); return true;
-      case 'remoteReset': settings.remoteToken = crypto.randomBytes(16).toString('hex'); saveSettings(); remoteStop(); remoteWatch(); return true;
+      case 'remoteReset': settings.remoteToken = crypto.randomBytes(16).toString('hex'); settings.pairedDevices = []; saveSettings(); remoteStop(); remoteWatch(); return true;
+      case 'connect': settings.connect = !!value; saveSettings(); remoteWatch(); onChange(); return true;
       case 'partyName': settings.partyName = String(value || '').replace(/[\u0000-\u001f]/g, '').trim().slice(0, 24); saveSettings(); if (party) party.name = settings.partyName || party.name; return true;
       default: return false;
     }
